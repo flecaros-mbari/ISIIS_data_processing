@@ -3,7 +3,7 @@ import os
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 
-def extract_frames(video_path, output_dir, frame_rate):
+def extract_frames(video_path, output_dir):
     """This function is to extract frames of a video in avi format with 
     a desired frame rate
 
@@ -26,7 +26,7 @@ def extract_frames(video_path, output_dir, frame_rate):
     # Read the videos 
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS))
-    frame_interval = fps // frame_rate
+    frame_interval = fps #// #frame_rate
 
     
     count = 0
@@ -59,7 +59,7 @@ def process_video_file(params):
     """    
 
     # Get the path, relative path, frame rate and name of the video
-    video_path, base_output_dir, frame_rate, input_dir = params
+    video_path, base_output_dir, input_dir = params
 
     # Generate the output directory for frames
     relative_path = os.path.relpath(video_path, input_dir)
@@ -72,7 +72,7 @@ def process_video_file(params):
     os.makedirs(output_dir, exist_ok=True)
 
     # Extract the frames
-    extract_frames(video_path, output_dir, frame_rate)
+    extract_frames(video_path, output_dir)
 
 def process_videos(input_dir, output_dir):
     """This function loops into all the videos to transform them to frames
@@ -89,7 +89,7 @@ def process_videos(input_dir, output_dir):
     print("Scanning for video files...")
     for root, dirs, files in tqdm(os.walk(input_dir), desc="Walking through directories"):
         for filename in files:
-            if filename.endswith(".avi"):
+            if filename.endswith(".mp4"):
                 video_path = os.path.join(root, filename)
                 video_files.append((video_path, output_dir, input_dir))
     print(f"Found {len(video_files)} video files to process.")
@@ -105,12 +105,14 @@ def process_videos(input_dir, output_dir):
     print("Conversion and frame extraction completed.")
 
 if __name__ == "__main__":
-    input_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/RAW/20240821_RachelCarson/"
-    output_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesnew/"
+
+    # Path to the .avi videos
+    input_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/VideosMP4/20250401_Hawaii/20250405_scuba"
+    output_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2frames/20250401_Hawaii/20250405_scuba"
     frames_per_second = 1
 
     print(f"Input directory: {input_directory}")
     print(f"Output directory: {output_directory}")
     print(f"Frames per second: {frames_per_second}")
 
-    process_videos(input_directory, output_directory, frames_per_second)
+    process_videos(input_directory, output_directory)

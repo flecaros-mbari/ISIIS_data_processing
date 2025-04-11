@@ -76,8 +76,8 @@ def process_videos(input_dir, output_dir):
     print("Conversion and frame extraction completed.")
 
 if __name__ == "__main__":
-    input_directory = "//Volumes/CFElab/Data_archive/Images/ISIIS/RAW/"
-    output_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/VideosMP4/"
+    input_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/RAW/20250401_Hawaii/"
+    output_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/20250401_Hawaii/"
 
     print(f"Input directory: {input_directory}")
     print(f"Output directory: {output_directory}")

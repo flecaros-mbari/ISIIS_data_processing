@@ -36,7 +36,7 @@ def get_all_images(directory):
     
     return all_images
 
-def copy_images(source_dir, destination_dir, num_images):
+def copy_images(source_dir, destination_dir, num_images, check_point):
     """_summary_
 
     Args:
@@ -74,10 +74,11 @@ def copy_images(source_dir, destination_dir, num_images):
             # Copying the images
             image_filename = os.path.basename(image)
             destination_path = os.path.join(destination_dir, image_filename)
+            check_point = os.path.join(check_point, image_filename)
             
             # Check if file already exists in destination
-            if os.path.exists(destination_path):
-                print(f"File {image_filename} already exists in {destination_dir}. Skipping...")
+            if os.path.exists(check_point):
+                print(f"File {image_filename} already exists in {check_point}. Skipping...")
                 continue
             
             shutil.copy(image, destination_path)
@@ -236,7 +237,7 @@ def show_images(directory):
         except Exception as e:
             print(f"Error deleting image {current_image_path}: {e}")
 
-def check_and_fill_images(source_directory, destination_directory, number_of_images):
+def check_and_fill_images(source_directory, destination_directory, number_of_images, check_point):
     """Function to review the amoount of images and fill if its necessary 
 
     Args:
@@ -258,7 +259,7 @@ def check_and_fill_images(source_directory, destination_directory, number_of_ima
     remaining_images = number_of_images - current_count
     
     # Copy additional images until desired count is reached
-    copied_count = copy_images(source_directory, destination_directory, remaining_images)
+    copied_count = copy_images(source_directory, destination_directory, remaining_images, check_point)
     
     # If images were copied, show them for inspection
     if copied_count > 0:
@@ -266,12 +267,13 @@ def check_and_fill_images(source_directory, destination_directory, number_of_ima
         show_images(destination_directory)
     
     # Recursive call if number of images is still not reached
-    check_and_fill_images(source_directory, destination_directory, number_of_images)
+    check_and_fill_images(source_directory, destination_directory, number_of_images, check_point)
 
 if __name__ == "__main__":
-    source_directory = "/Volumes/CFElab-1/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/"
-    number_of_images = 5000
-    destination_directory = f"/Volumes/CFElab-1/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/{number_of_images}_depth"
+    check_point = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/5000_depth/"
+    source_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/"
+    number_of_images = 25000
+    destination_directory = f"/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/{number_of_images}_depth"
     
     # Start the process of checking and filling images
-    check_and_fill_images(source_directory, destination_directory, number_of_images)
+    check_and_fill_images(source_directory, destination_directory, number_of_images, check_point)
