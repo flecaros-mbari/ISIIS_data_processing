@@ -6,14 +6,16 @@
  
 **ISIIS_data_processing** 
 
-This repository processes videos from the ISIIS instrument, it get the frames of the videos, transform the format of the videos, get the depth for every images based on the ctd of the rov, and other features.
+This repository processes videos from the ISIIS instrument, it get the frames of the videos, transform the format of the videos from avi to mp4, get the depth for every images based on the CTD of the ROV profile, and other features.
 
 The ISIIS images are like this.
 ![Alt text](<img/CFE_ISIIS-243-2024-03-19 12-58-20.186_0588 (1).jpg>)
 
-*Installation*
 
+**Installation**
+
+```
 conda env create -f environment.yml
-
 conda activate isiis
+```
 
