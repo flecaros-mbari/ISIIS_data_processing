@@ -3,7 +3,7 @@ import os
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 
-def extract_frames(video_path, output_dir):
+def extract_frames(video_path, output_dir, frame_rate = 1):
     """This function is to extract frames of a video in avi format with 
     a desired frame rate
 
@@ -26,7 +26,7 @@ def extract_frames(video_path, output_dir):
     # Read the videos 
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS))
-    frame_interval = fps #// #frame_rate
+    frame_interval = frame_rate
 
     
     count = 0
@@ -107,8 +107,13 @@ def process_videos(input_dir, output_dir):
 if __name__ == "__main__":
 
     # Path to the .avi videos
+<<<<<<< HEAD
     input_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/VideosMP4/20230707_tanktest"
     output_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2frames/20230707_tanktesttest"
+=======
+    input_directory = "/mbari/CFElab/Data_archive/Images/ISIIS/COOK/VideosMP4/20250401_Hawaii/"
+    output_directory = "/mbari/CFElab/Data_archive/Images/ISIIS/COOK/Videos2frames/20250401_Hawaii/"
+>>>>>>> e580d10d732b0943b3e5577628850dc25cf994c5
     frames_per_second = 1
 
     print(f"Input directory: {input_directory}")
