@@ -2,38 +2,27 @@ import cv2
 import os
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
+import argparse
+import configparser
 
-def extract_frames(video_path, output_dir):
-    """This function is to extract frames of a video in avi format with 
-    a desired frame rate
-
-    Args:
-        video_path (str): path to the videos
-        output_dir (str): path to the folder that you want to save the frames   
-        frame_rate (int): frame rate to obtain the frames
-    """    
-
-    # Getting the videos
+def extract_frames(video_path, output_dir, frame_rate):
+    """Extract frames from a video at the desired frame rate."""
     video_name = os.path.splitext(os.path.basename(video_path))[0]
-
-    # Create the new folder for the frames
     os.makedirs(output_dir, exist_ok=True)
-
-    # Debugging
     print(f"Processing video: {video_name}")
     print(f"Output directory: {output_dir}")
 
-    # Read the videos 
     cap = cv2.VideoCapture(video_path)
     fps = int(cap.get(cv2.CAP_PROP_FPS))
-    frame_interval = fps #// #frame_rate
+    if fps == 0:
+        print(f"Warning: FPS is 0 for video {video_path}")
+        return
 
-    
+    frame_interval = max(1, fps // frame_rate)
     count = 0
     saved_frames = 0
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    # Looping into the videos to get the frames
     with tqdm(total=total_frames, desc=f"Extracting frames from {video_name}", unit="frame") as pbar:
         while cap.isOpened():
             ret, frame = cap.read()
@@ -46,73 +35,46 @@ def extract_frames(video_path, output_dir):
                 saved_frames += 1
             count += 1
             pbar.update(1)
-    
+
     cap.release()
     print(f"Extraction completed for {video_name}. {saved_frames} frames saved.")
 
 def process_video_file(params):
-    """This function creates the new path, reads the videos and call 
-    the function to get the frames
-
-    Args:
-        params (str): path to the videos to get the frames
-    """    
-
-    # Get the path, relative path, frame rate and name of the video
-    video_path, base_output_dir, input_dir = params
-
-    # Generate the output directory for frames
+    video_path, base_output_dir, input_dir, frames_per_second = params
     relative_path = os.path.relpath(video_path, input_dir)
     sub_dirs = relative_path.split(os.sep)
-
-    #if any('rachelcarson' in dir.lower() for dir in sub_dirs):
     output_dir = os.path.join(base_output_dir, *sub_dirs[:-1])
-    
-    # Create the folder
     os.makedirs(output_dir, exist_ok=True)
+    extract_frames(video_path, output_dir, frames_per_second)
 
-    # Extract the frames
-    extract_frames(video_path, output_dir)
-
-def process_videos(input_dir, output_dir):
-    """This function loops into all the videos to transform them to frames
-
-    Args:
-        input_dir (str): path which contains all the videos in avi
-        output_dir (str): path to the new videos in frames
-    """    
-
-    # List with the video files
+def process_videos(input_dir, output_dir, frames_per_second):
     video_files = []
-
-    # Looping into the folders to get the videos to tranform
     print("Scanning for video files...")
     for root, dirs, files in tqdm(os.walk(input_dir), desc="Walking through directories"):
         for filename in files:
             if filename.endswith(".mp4"):
                 video_path = os.path.join(root, filename)
-                video_files.append((video_path, output_dir, input_dir))
-    print(f"Found {len(video_files)} video files to process.")
+                video_files.append((video_path, output_dir, input_dir, frames_per_second))
 
-    # Using the cores of the computer
-    num_cores = cpu_count() - 1
+    print(f"Found {len(video_files)} video files to process.")
+    num_cores = max(1, cpu_count() - 1)
     print(f"Using {num_cores} cores for parallel processing.")
 
-    # Tranforming the videos
-    print("Starting conversion and frame extraction...")
     with Pool(num_cores) as pool:
         list(tqdm(pool.imap(process_video_file, video_files), total=len(video_files), desc="Processing videos"))
+
     print("Conversion and frame extraction completed.")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Extract frames from videos at a specified frame rate.")
+    parser.add_argument('--input', required=True, help='Path to the input directory containing videos')
+    parser.add_argument('--output', required=True, help='Path to the output directory for extracted frames')
+    parser.add_argument('--fps', type=int, default=1, help='Number of frames to extract per second')
 
-    # Path to the .avi videos
-    input_directory = "/mbari/CFElab/Data_archive/Images/ISIIS/COOK/VideosMP4/20250401_Hawaii/"
-    output_directory = "/mbari/CFElab/Data_archive/Images/ISIIS/COOK/Videos2frames/20250401_Hawaii/"
-    frames_per_second = 1
+    args = parser.parse_args()
 
-    print(f"Input directory: {input_directory}")
-    print(f"Output directory: {output_directory}")
-    print(f"Frames per second: {frames_per_second}")
+    print(f"Input directory: {args.input}")
+    print(f"Output directory: {args.output}")
+    print(f"Frames per second: {args.fps}")
 
-    process_videos(input_directory, output_directory)
+    process_videos(args.input, args.output, args.fps)

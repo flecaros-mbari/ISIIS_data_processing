@@ -1,99 +1,163 @@
+import argparse
 import pandas as pd
 import torch
 import os
 from tqdm import tqdm
 from transformers import AutoModelForImageClassification, AutoImageProcessor
 from PIL import Image
-import torch.nn as nn
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# Model configuration
-MODEL_NAME = "/home/fernanda/vittrain/cfe_complete_v16-20250303"
+def parse_args():
+    parser = argparse.ArgumentParser(description="Batch classify ROIs in CSV files and post-process results.")
+    parser.add_argument(
+        "--model",
+        required=True,
+        help="Path or name of the pretrained model.",
+    )
+    parser.add_argument(
+        "--csv-dir",
+        required=True,
+        help="Directory containing CSV files to process.",
+    )
+    return parser.parse_args()
 
-print("[TWD] Loading model and image processor...")
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL = AutoModelForImageClassification.from_pretrained(MODEL_NAME).to(device)
-processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
-print(f"[TWD] Model loaded successfully on {device}.")
+def load_model(model_name):
+    print("[INFO] Loading model and image processor...")
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = AutoModelForImageClassification.from_pretrained(model_name).to(device)
+    processor = AutoImageProcessor.from_pretrained(model_name)
+    print(f"[INFO] Model loaded successfully on {device}.")
+    return model, processor, device
 
-def predict_class(image_path):
+def predict_class(image_path, model, processor, device):
     """Predicts the class for a Region of Interest (ROI) in a given image."""
-
     try:
-        # Open the full image
         image = Image.open(image_path).convert("RGB")
-
-        # Preprocess the ROI and move tensors to GPU if available
         inputs = processor(images=image, return_tensors="pt").to(device)
-        
-        with torch.no_grad():
-            outputs = MODEL(**inputs)
-            
-            # Aplicar softmax para obtener probabilidades y asegurarse de no rastrear gradientes
-            probabilities = torch.nn.functional.softmax(outputs.logits, dim=1).squeeze().detach().cpu().numpy()
-            
-            # Obtener la clase con mayor score
-            predicted_class_idx = probabilities.argmax()
-            predicted_class = MODEL.config.id2label[predicted_class_idx]
 
-            # Guardar todas las clases y scores en un diccionario
-            scores_dict = {MODEL.config.id2label[i]: probabilities[i] for i in range(len(probabilities))}
-            scores_dict["class"] = predicted_class  # Agregar la clase predicha al diccionario
+        with torch.no_grad():
+            outputs = model(**inputs)
+            probabilities = torch.nn.functional.softmax(outputs.logits, dim=1).squeeze().cpu().numpy()
+            predicted_class_idx = probabilities.argmax()
+            predicted_class = model.config.id2label[predicted_class_idx]
+            scores_dict = {model.config.id2label[i]: probabilities[i] for i in range(len(probabilities))}
+            scores_dict["class"] = predicted_class
+
+        # Free memory
+        del inputs, outputs
+        torch.cuda.empty_cache()
+        torch.cuda.ipc_collect()
 
         return scores_dict
 
     except Exception as e:
         print(f"[ERROR] Error processing image {image_path}: {e}")
-        return "Error"
+        return {"class": "Error"}
 
-def process_row(row):
-    """Processes a single row from the CSV file."""
-    return predict_class(
-        row['crop_path']
-    )
+def process_row(row, model, processor, device):
+    return predict_class(row['crop_path'], model, processor, device)
 
-def process_csv(file_path):
-    """Processes a CSV file in parallel and updates it in place."""
+def classify_csv(file_path, model, processor, device):
+    """Step 1: Classify Unknown entries in the CSV using the model."""
     try:
         data = pd.read_csv(file_path)
-        if "Unknown" in data['class'].values:
+        if True:
+        #if "Unknown" in data['class'].values:
+            results = []
+            for _, row in tqdm(
+                data.iterrows(),
+                total=len(data),
+                desc=f"Classifying {os.path.basename(file_path)}",
+                unit="row"
+            ):
+                result = process_row(row, model, processor, device)
+                results.append(result)
 
-            # Procesar filas en paralelo
-            with ThreadPoolExecutor() as executor:
-                results = list(tqdm(executor.map(process_row, [row for _, row in data.iterrows()]), 
-                                    total=len(data), desc=f"Processing {os.path.basename(file_path)}", unit="row"))
-
-            # Convertir los resultados en un DataFrame
             results_df = pd.DataFrame(results)
 
-            # Actualizar las columnas del CSV con las predicciones
-            data['class'] = results_df['class']  # Clase predicha
+            # Update the main DataFrame
+            data['class'] = results_df['class']
             for class_name in results_df.columns:
-                if class_name != 'class':  # Evitar sobrescribir la columna principal
-                    data[class_name] = results_df[class_name]  # Agregar scores de cada clase
+                if class_name != 'class':
+                    data[class_name] = results_df[class_name]
 
-            # Guardar el archivo sobrescribiéndolo
             data.to_csv(file_path, index=False)
-    
+
+        return file_path
+
     except Exception as e:
         print(f"[ERROR] Error processing file {file_path}: {e}")
+        return None
 
-# Directory with CSV files
-csv_dir = "/home/fernanda/RachelCarson_detections_224/det_filtered/csv-vits16"  # Change to your actual directory
+def postprocess_csv(file_path):
+    """Step 2: Post-process the classified CSV to add score, class_s, score_s."""
+    try:
+        df = pd.read_csv(file_path)
 
-print(f"[TWD] Processing CSV files in {csv_dir}...")
+        # Classes are assumed to be after crop_path column
+        if "crop_path" not in df.columns:
+            print(f"[WARNING] Skipping {file_path}: missing crop_path column")
+            return
 
-# Process all CSV files using multiprocessing
-csv_files = [f for f in os.listdir(csv_dir) if f.endswith(".csv")]
+        crop_idx = df.columns.get_loc("crop_path")
+        class_columns = df.columns[crop_idx+1:]
 
-with ThreadPoolExecutor() as executor:
-    future_to_file = {executor.submit(process_csv, os.path.join(csv_dir, csv_file)): csv_file for csv_file in csv_files}
-    
-    for future in tqdm(as_completed(future_to_file), total=len(csv_files), desc="Overall Progress", unit="file"):
-        csv_file = future_to_file[future]
-        try:
-            future.result()  # Ensures we catch any errors in processing
-        except Exception as e:
-            print(f"[ERROR] Error processing {csv_file}: {e}")
+        if len(class_columns) < 2:
+            print(f"[WARNING] Skipping {file_path}: not enough class columns found")
+            return
 
-print(f"[TWD] All CSV files have been processed and updated in {csv_dir}.")
+        # Probability of the predicted class
+        df["score"] = df.apply(lambda row: row.get(row["class"], None), axis=1)
+
+        # Second best class and score
+        def get_second_best(row):
+            sorted_scores = row[class_columns].sort_values(ascending=False)
+            class_s = sorted_scores.index[1]
+            score_s = sorted_scores.iloc[1]
+            return pd.Series([class_s, score_s])
+
+        df[["class_s", "score_s"]] = df.apply(get_second_best, axis=1)
+
+        # Save
+        df.to_csv(file_path, index=False)
+        print(f"[INFO] Post-processed {file_path}")
+
+    except Exception as e:
+        print(f"[ERROR] Post-processing failed for {file_path}: {e}")
+
+def main():
+    args = parse_args()
+    model_name = args.model
+    csv_dir = args.csv_dir
+
+    model, processor, device = load_model(model_name)
+
+    print(f"[INFO] Processing CSV files in {csv_dir}...")
+    csv_files = [f for f in os.listdir(csv_dir) if f.endswith(".csv")]
+
+    # Step 1: Classify
+    classified_files = []
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        future_to_file = {
+            executor.submit(classify_csv, os.path.join(csv_dir, csv_file), model, processor, device): csv_file
+            for csv_file in csv_files
+        }
+        for future in tqdm(
+            as_completed(future_to_file),
+            total=len(csv_files),
+            desc="Classification Progress",
+            unit="file"
+        ):
+            file_path = future.result()
+            if file_path:
+                classified_files.append(file_path)
+
+    # Step2: Post-processing
+    print("[INFO] Starting post-processing...")
+    for file_path in classified_files:
+        postprocess_csv(file_path)
+
+    print("[INFO] All CSV files have been processed successfully.")
+
+if __name__ == "__main__":
+    main()

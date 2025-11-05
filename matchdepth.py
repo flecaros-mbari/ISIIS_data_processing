@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 import re
 from datetime import datetime, timedelta
@@ -90,7 +91,7 @@ def add_seconds(dt, seconds):
     """
     return dt + timedelta(seconds=seconds)
 
-def find_matching_timestamps(df1, df2, defase= 0, threshold=8):
+def find_matching_timestamps(df1, df2, defase= 0, threshold=8, raw = False):
     """Function to match the timestamps considering a defase of the clocks
     and a minimum threshold in seconds to consider the two timestamps as a match.
 
@@ -255,120 +256,133 @@ def parse_log_file_to_dataframe(file_path):
     # Return Dataframe
     return df
 
-############################################# MAIN ##############################################
+def main():
+    parser = argparse.ArgumentParser(
+        description="Match image timestamps with ROV CTD data and optionally rename files."
+    )
+    parser.add_argument(
+        "--ctd-path",
+        type=str,
+        required=True,
+        help="Path to the ROV CTD log file (CSV or raw text)."
+    )
+    parser.add_argument(
+        "--images-dir",
+        type=str,
+        required=True,
+        help="Directory containing image files to process."
+    )
+    parser.add_argument(
+        "--delay",
+        type=int,
+        default=69,
+        help="Defase (offset) in seconds to adjust timestamps (default: 69)."
+    )
+    parser.add_argument(
+        "--raw",
+        action="store_true",
+        help="Indicates that the log file is raw text format, not preprocessed CSV."
+    )
+    parser.add_argument(
+        "--rename",
+        action="store_true",
+        help="Rename images based on matched depth."
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print detailed matching and renaming information."
+    )
+
+    args = parser.parse_args()
+
+    # Unpack arguments
+    file_path = args.ctd_path
+    images_dir_path = args.images_dir
+    defase = args.delay
+    raw = args.raw
+    rename = args.rename
+    verbose = args.verbose
+
+    # Read or parse log file
+    if not raw:
+        df = pd.read_csv(file_path)
+        df['timestamp'] = df.apply(create_timestamp, axis=1)
+    else:
+        df = parse_log_file_to_dataframe(file_path)
+        df = filter_time_and_pressure_data(df)
+
+    # Regular expression to extract data from filenames
+    pattern = re.compile(r"CFE_(.*?)-(\d+)-(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2}\.\d{3})_(\d{4})")
+
+    iso_datetime = {}
+    instrument_type = {}
+    path = {}
+    index = 0
+
+    # Iterate over images
+    for root, dirs, files in os.walk(images_dir_path):
+        for file in files:
+            if file.endswith('.jpg'):
+                matches = re.findall(pattern, file)
+                if matches:
+                    instrument, _, datetime_str, frame_num = matches[0]
+                    datetime_str = datetime_str.replace('-', ':') + "Z"
+
+                    dt = datetime.strptime(datetime_str, "%Y:%m:%d %H:%M:%S.%fZ")
+                    dt = add_seconds(dt, float(frame_num))
+                    dt = pytz.timezone('America/Los_Angeles').localize(dt)
+                    dt_utc = dt.astimezone(pytz.utc)
+
+                    iso_datetime[index] = dt_utc
+                    instrument_type[index] = instrument
+                    path[index] = os.path.join(root, file)
+                    index += 1
+
+    iso_datetime_df = pd.DataFrame({
+        'iso_datetime': pd.Series(iso_datetime),
+        'instrument_type': pd.Series(instrument_type),
+        'path': pd.Series(path)
+    })
+
+    # Match timestamps
+    matching_timestamps = find_matching_timestamps(
+        df,
+        iso_datetime_df,
+        defase=-defase,
+        raw = raw
+    )
+
+    # Print matches if verbose
+    if verbose:
+        print("Matching timestamps:")
+        for ts1, depth, ts2, p in matching_timestamps:
+            print(f"ROV: {ts1} - Instrument: {ts2} at depth {depth} with path {p}")
+        print(f"Summary: {len(matching_timestamps)} matches out of {len(iso_datetime_df)} images")
+
+    # Rename files if requested
+    if rename:
+        print("Renaming matched files...")
+        for ts1, depth, ts2, p in matching_timestamps:
+            try:
+                original_name, extension = os.path.splitext(os.path.basename(p))
+                if original_name.endswith('m'):
+                    if verbose:
+                        print(f"Skipping {p} as it ends with 'm'")
+                    continue
+
+                suffix = f'_{depth}m'
+                new_file_name = f'{original_name}{suffix}{extension}'
+                new_file_path = os.path.join(os.path.dirname(p), new_file_name)
+                os.rename(p, new_file_path)
+
+                if verbose:
+                    print(f'Renamed {p} to {new_file_path}')
+            except Exception as e:
+                print(f'Error renaming {p}: {e}')
+
+        print(f"Summary: {len(matching_timestamps)} matches out of {len(iso_datetime_df)} images")
 
 
-# Define raw and defase
-raw = False
-
-# Rename images based on depth
-rename = True
-
-verbose = True
-
-# Defase in secondsa
-defase = (60*1 + 9)  # seconds
-
-# Ruta al archivo de log
-file_path = '/Volumes/CFElab-1/Data_archive/CTD profiles/rov-ctd-data/rovctd-data-20240821.txt'  # Cambia esto a la ruta de tu archivo
-
-# Path to the directory containing images
-images_dir_path = "/Volumes/CFElab-1/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/20240821_RachelCarson"
-
-# Raw log
-if not raw:
-    # Read the text file into a DataFrame
-    df = pd.read_csv(file_path)
-    df['timestamp'] = df.apply(create_timestamp, axis=1)
-else:
-    # Ejecutar la función para crear el DataFrame
-    df = parse_log_file_to_dataframe(file_path)
-
-    # Filtrar los datos para mostrar solo columnas de tiempo y presión, excluyendo NO_PUB y NO_PROV
-    df = filter_time_and_pressure_data(df)
-
-# Regular expression to extract data from the filename
-pattern = re.compile(r"CFE_(.*?)-(\d+)-(\d{4}-\d{2}-\d{2} \d{2}-\d{2}-\d{2}\.\d{3})_(\d{4})")
-
-# Initialize dictionaries and variables
-iso_datetime = {}
-instrument_type = {}
-path = {}
-index = 0
-
-# Iterate over files in the folder and subfolders
-for root, dirs, files in os.walk(images_dir_path):
-    for file in files:
-        if file.endswith('.jpg'):
-            # Extract data from the filename using the regular expression
-            matches = re.findall(pattern, file)
-            if matches:
-                instrument, _, datetime_str, frame_num = matches[0]
-                datetime_str = datetime_str.replace('-', ':') + "Z"  # Replace hyphens with colons and add Z for UTC
-                
-                # Convert datetime string to datetime object
-                dt = datetime.strptime(datetime_str, "%Y:%m:%d %H:%M:%S.%fZ")
-    
-                # Add the seconds
-                dt = add_seconds(dt, float(frame_num))
-    
-                # Localize to PST
-                dt = pytz.timezone('America/Los_Angeles').localize(dt)
-
-                #dt = dt - timedelta(hours=1)
-
-                # Convert to UTC
-                dt_utc = dt.astimezone(pytz.utc)
-                iso_datetime[index] = dt_utc
-                instrument_type[index] = instrument
-                path[index] = os.path.join(root, file)
-                index += 1
-
-# Convert dictionaries to a DataFrame
-iso_datetime_df = pd.DataFrame({
-    'iso_datetime': pd.Series(iso_datetime),
-    'instrument_type': pd.Series(instrument_type),
-    'path': pd.Series(path)
-})
-
-# Matching the timestamps
-matching_timestamps = find_matching_timestamps(df, iso_datetime_df, defase = -defase)
-
-# Review matches
-if verbose:
-    print("Matching timestamps:")
-    for ts1, depth, ts2, path in matching_timestamps:
-        print(f"ROV: {ts1} - Instrument: {ts2} at depth {depth} with path {path}")
-
-    print(f"Summary: {len(matching_timestamps)} matches out of {len(iso_datetime_df)} images")
-
-if rename:
-    # Show matching timestamps
-    print("Matching timestamps:")
-    for ts1, depth, ts2, path in matching_timestamps:
-        try:
-            # Split the original file name and extension
-            original_name, extension = os.path.splitext(os.path.basename(path))
-            
-            # Skip images whose name ends with 'm'
-            if original_name.endswith('m'):
-                print(f"Skipping {path} as it ends with 'm'")
-                continue
-            
-            print(f"ROV: {ts1} - Instrument: {ts2} at depth {depth} with path {path}")
-            suffix = f'_{depth}m'  # Replace with the actual value you want to add
-
-            # Create the new file name with the suffix
-            new_file_name = f'{original_name}{suffix}{extension}'
-
-            # Build the full new file path
-            new_file_path = os.path.join(os.path.dirname(path), new_file_name)
-
-            # Rename the file
-            os.rename(path, new_file_path)
-
-            print(f'Renamed {path} to {new_file_path}')
-        except Exception as e:
-            print(f'Error renaming {path} to {new_file_path}: {e}')
-
-    print(f"Summary: {len(matching_timestamps)} matches out of {len(iso_datetime_df)} images")
+if __name__ == "__main__":
+    main()
