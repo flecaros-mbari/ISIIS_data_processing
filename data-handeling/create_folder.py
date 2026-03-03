@@ -1,3 +1,26 @@
+"""
+Script Description:
+===================
+This script processes regions of interest (ROIs) from images based on CSV files containing ROI information.
+It can either crop ROIs from the original images or organize existing crop files into class-based folders.
+
+Key Features:
+1. Reads all CSV files in a specified directory.
+2. Filters ROIs based on minimum area and optional depth requirements.
+3. Creates a unique folder structure for each class and stores the ROIs there.
+4. Supports copying existing crops or cropping new ROIs from images.
+5. Uses PyTorch and torchvision to handle images and tensor-based cropping (if needed).
+6. Processes ROIs in parallel using ThreadPoolExecutor for speed.
+
+Dependencies:
+- pandas
+- PIL (Pillow)
+- PyTorch (torch, torchvision)
+- tqdm
+- argparse
+- shutil
+"""
+
 import os
 import pandas as pd
 import torch
@@ -8,7 +31,15 @@ from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import argparse
 
+# ==== ARGUMENT PARSING ====
 def parse_args():
+    """
+    Define command-line arguments for the script.
+    --csv-dir      : Directory containing CSV files with ROI information.
+    --crops        : If set, assumes crops already exist and should be copied instead of cropped.
+    --min-area     : Minimum area required for ROI to be processed (default 210 pixels^2).
+    --require-depth: Only process ROIs whose image filenames contain 'm'.
+    """
     parser = argparse.ArgumentParser(
         description="Crop ROIs or organize existing crops into class folders."
     )
@@ -35,7 +66,20 @@ def parse_args():
     )
     return parser.parse_args()
 
+# ==== ROI PROCESSING FUNCTION ====
 def process_roi(row, crops, roi_base_dir, device, min_area, require_m):
+    """
+    Process a single ROI row from the CSV.
+    
+    If 'crops' is True:
+        - Copies existing crop to the appropriate class folder.
+    Else:
+        - Crops ROI from the original image using coordinates and saves to class folder.
+
+    Filters:
+        - Skips ROIs smaller than min_area
+        - Optionally skips ROIs if 'require_m' is True and filename doesn't contain 'm'
+    """
     try:
         image_path = row["image_path"]
         if float(row["area"]) < min_area:
@@ -43,23 +87,25 @@ def process_roi(row, crops, roi_base_dir, device, min_area, require_m):
         if require_m and "m" not in os.path.basename(image_path):
             return
 
+        # Determine folder for the class
         class_name = row["class"]
         class_dir = os.path.join(roi_base_dir, class_name)
         os.makedirs(class_dir, exist_ok=True)
 
         if crops:
-            # Copy existing crop
+            # Copy existing crop file
             src = row["crop_path"]
             img_name = os.path.basename(src)
             dst = os.path.join(class_dir, img_name)
             shutil.copy2(src, dst)
         else:
-            # Compute ROI coordinates
+            # Crop ROI from the original image
             x1 = int(int(row["image_width"]) * float(row["x"]))
             y1 = int(int(row["image_height"]) * float(row["y"]))
             x2 = int(int(row["image_width"]) * float(row["xx"]))
             y2 = int(int(row["image_height"]) * float(row["xy"]))
 
+            # Skip invalid coordinates
             if x2 <= x1 or y2 <= y1:
                 print(f"Invalid coordinates in {image_path}, skipping...")
                 return
@@ -78,7 +124,16 @@ def process_roi(row, crops, roi_base_dir, device, min_area, require_m):
     except Exception as e:
         print(f"Error with {row.get('image_path', 'unknown')}: {e}")
 
+# ==== MAIN FUNCTION ====
 def main():
+    """
+    Main workflow:
+    1. Parse arguments
+    2. Determine device (GPU if available)
+    3. Iterate through CSV files
+    4. Process each ROI in parallel
+    5. Save cropped images or copy existing crops to class folders
+    """
     args = parse_args()
 
     csv_folder = args.csv_dir
@@ -86,20 +141,24 @@ def main():
     min_area = args.min_area
     require_m = args.require_depth
 
+    # Determine whether to use GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using device: {device}")
 
+    # List CSV files in the folder
     csv_files = [f for f in os.listdir(csv_folder) if f.endswith(".csv")]
 
     for csv_file in tqdm(csv_files, desc="Processing CSVs"):
         csv_path = os.path.join(csv_folder, csv_file)
 
-        # Create the rois folder next to the csv file
+        # Create base folder for storing ROIs
         roi_base_dir = os.path.join(csv_folder, "rois")
         os.makedirs(roi_base_dir, exist_ok=True)
 
+        # Read CSV into a DataFrame
         df = pd.read_csv(csv_path)
 
+        # Keep only relevant columns
         keep_cols = [
             "image_path",
             "class",
@@ -118,14 +177,16 @@ def main():
         ]
         if crops:
             keep_cols.append("crop_path")
-
         df = df[keep_cols]
 
+        # Process ROIs in parallel for speed
         with ThreadPoolExecutor() as executor:
             list(
                 tqdm(
                     executor.map(
-                        lambda r: process_roi(r, crops, roi_base_dir, device, min_area, require_m),
+                        lambda r: process_roi(
+                            r, crops, roi_base_dir, device, min_area, require_m
+                        ),
                         df.to_dict(orient="records")
                     ),
                     total=len(df),
@@ -135,5 +196,6 @@ def main():
 
     print("ROI processing completed.")
 
+# ==== RUN SCRIPT ====
 if __name__ == "__main__":
     main()
