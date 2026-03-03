@@ -107,13 +107,8 @@ def process_videos(input_dir, output_dir):
 if __name__ == "__main__":
 
     # Path to the .avi videos
-<<<<<<< HEAD
     input_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/VideosMP4/20230707_tanktest"
-    output_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2frames/20230707_tanktesttest"
-=======
-    input_directory = "/mbari/CFElab/Data_archive/Images/ISIIS/COOK/VideosMP4/20250401_Hawaii/"
-    output_directory = "/mbari/CFElab/Data_archive/Images/ISIIS/COOK/Videos2frames/20250401_Hawaii/"
->>>>>>> e580d10d732b0943b3e5577628850dc25cf994c5
+    output_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2frames/20230707_tanktesttt"
     frames_per_second = 1
 
     print(f"Input directory: {input_directory}")

@@ -1,5 +1,5 @@
 /classes
-/img
+/Volumes
 
 *tsv
 *.png
@@ -7,3 +7,7 @@
 .DS_Store
 
 *.xlsx
+
+
+*.txt
+*.csv
