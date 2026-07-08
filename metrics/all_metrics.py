@@ -3,12 +3,13 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from sklearn.metrics import confusion_matrix
 
 # Leer CSV
-df = pd.read_csv("/Volumes/CFElab/Data_analysis/ISIIS/Voxel51/voxel51_isiis_RachelCarson_2024_02_depth_gt0.csv")
+df = pd.read_csv("/Users/fernandalecaros/Downloads/tator_data_v67_isiis_gt0depth_gt150area.csv")
 
 print(df.columns)
 
 # Filtrar filas válidas
-df = df.dropna(subset=["ground_truth.label", "predicted_label"])
+# df = df.dropna(subset=["ground_truth.label", "predicted_label"])
+df = df.dropna(subset=["Label", "predicted_label"])
 
 results = []
 
@@ -17,7 +18,7 @@ classes = df["predicted_label"].unique()
 
 for cls in classes:
     # Binario: cls vs resto
-    y_true = (df["ground_truth.label"] == cls).astype(int)
+    y_true = (df["Label"] == cls).astype(int)
     y_pred = (df["predicted_label"] == cls).astype(int)
 
     results.append({
@@ -40,7 +41,7 @@ labels = df["predicted_label"].unique()
 rows = []
 
 for cls in labels:
-    y_true = (df["ground_truth.label"] == cls).astype(int)
+    y_true = (df["Label"] == cls).astype(int)
     y_pred = (df["predicted_label"] == cls).astype(int)
 
     tn, fp, fn, tp = confusion_matrix(y_true, y_pred).ravel()
@@ -65,11 +66,11 @@ from sklearn.metrics import confusion_matrix
 import pandas as pd
 
 labels = sorted(
-    set(df["ground_truth.label"]) | set(df["predicted_label"])
+    set(df["Label"]) | set(df["predicted_label"])
 )
 
 cm = confusion_matrix(
-    df["ground_truth.label"],
+    df["Label"],
     df["predicted_label"],
     labels=labels
 )
@@ -113,17 +114,17 @@ from sklearn.metrics import balanced_accuracy_score
 
 valid_classes = df["predicted_label"].unique()
 
-df_eval = df[df["ground_truth.label"].isin(valid_classes)]
+df_eval = df[df["Label"].isin(valid_classes)]
 
 bal_acc = balanced_accuracy_score(
-    df_eval["ground_truth.label"],
+    df_eval["Label"],
     df_eval["predicted_label"]
 )
 
 print("Balanced accuracy:", bal_acc)
 
 df["error"] = (
-    df["ground_truth.label"] != df["predicted_label"]
+    df["Label"] != df["predicted_label"]
 ).astype(int)
 
 df["depth_bin"] = pd.cut(df["depth"], bins=20)
@@ -148,8 +149,8 @@ plt.show()
 
 
 confusions = (
-    df[df["ground_truth.label"] != df["predicted_label"]]
-    .groupby(["ground_truth.label", "predicted_label"])
+    df[df["Label"] != df["predicted_label"]]
+    .groupby(["Label", "predicted_label"])
     .size()
     .reset_index(name="count")
     .sort_values("count", ascending=False)
