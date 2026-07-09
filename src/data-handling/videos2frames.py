@@ -3,7 +3,6 @@ import os
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 import argparse
-import configparser
 
 def extract_frames(video_path, output_dir, frame_rate):
     """Extract frames from a video at the desired frame rate."""

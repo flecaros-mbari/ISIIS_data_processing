@@ -1,3 +1,4 @@
+import argparse
 import os
 import pandas as pd
 import glob
@@ -127,30 +128,60 @@ def filter_and_save_rois(df, image_folder, output_folder, max_workers=4, tator =
     
     print("All ROIs have been processed.")
 
-# Read your DataFrame from the TSV file
-df = pd.read_csv("isiis_labels.tsv", sep='\t')
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Crop ROIs from labeled data into class-named training folders."
+    )
+    parser.add_argument(
+        "--tator",
+        action="store_true",
+        help="Use the Tator TSV export schema instead of the detection-CSV schema.",
+    )
+    parser.add_argument(
+        "--tsv-path",
+        default="isiis_labels.tsv",
+        help="Tator TSV export path (used when --tator is set).",
+    )
+    parser.add_argument(
+        "--image-folder",
+        default=None,
+        help="Directory of source images (default depends on --tator).",
+    )
+    parser.add_argument(
+        "--output-folder",
+        default="classes/",
+        help="Directory to write class-named crop folders into.",
+    )
+    parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=8,
+        help="Number of worker threads for ROI cropping.",
+    )
+    return parser.parse_args()
 
 
-# Specify folders
-tator = False
+def main():
+    args = parse_args()
+    tator = args.tator
 
-if tator:
-    image_folder = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/"
-    output_folder = "classes/"
-    # Read your DataFrame from the TSV file
-    df = pd.read_csv("isiis_labels.tsv", sep='\t')
-    # Call the function with multithreading and progress bars
-    filter_and_save_rois(df, image_folder, output_folder, max_workers=8, tator = tator)
+    if tator:
+        image_folder = args.image_folder or "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/"
+        df = pd.read_csv(args.tsv_path, sep='\t')
+        filter_and_save_rois(df, image_folder, args.output_folder, max_workers=args.max_workers, tator=tator)
+    else:
+        image_folder = args.image_folder or "/Volumes/CFElab/Data_analysis/ISIIS/detections20240821/det_filtered/csv/"
+        files = glob.glob(image_folder + "*.csv")
+        ind = 0
+        for file in files:
+            depth = re.search(r'_(\d+(\.\d+)?)m\.csv$', file)  # Match a number (integer or float) before 'm'
+            if depth is not None:
+                file_df = pd.read_csv(file, sep=',')
+                filter_and_save_rois(file_df, image_folder, args.output_folder, max_workers=args.max_workers, tator=tator, ind=ind)
+                ind += 1
 
-else:
-    image_folder = "/Volumes/CFElab/Data_analysis/ISIIS/detections20240821/det_filtered/csv/"
-    output_folder = "classes/"
-    files = glob.glob(image_folder + "*.csv")
-    ind = 0
-    for file in files:
-        depth = re.search(r'_(\d+(\.\d+)?)m\.csv$', file)  # Match a number (integer or float) before 'm'
-        if depth is not None:
-            file = pd.read_csv(f"{file}", sep=',')
-            filter_and_save_rois(file, image_folder, output_folder, max_workers=8, tator = tator, ind = ind)
-            ind +=1 
+
+if __name__ == "__main__":
+    main()
 

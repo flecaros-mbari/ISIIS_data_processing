@@ -8,6 +8,7 @@ Purpose:
     - Display images for inspection using pygame and mark images for deletion.
 """
 
+import argparse
 import os
 import random
 import shutil
@@ -227,10 +228,39 @@ def check_and_fill_images(source_dir, dest_dir, desired_count, check_point):
 
 
 # ------------------------- MAIN -------------------------
-if __name__ == "__main__":
-    check_point = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/5000_depth/"
-    source_directory = "/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/"
-    destination_directory = os.path.join(source_directory, "25000_depth")
-    number_of_images = 25000
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Select and copy a target number of depth-tagged images, with interactive review."
+    )
+    parser.add_argument(
+        "--source-dir",
+        default="/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/",
+        help="Directory to recursively search for CFE-prefixed, depth-tagged images.",
+    )
+    parser.add_argument(
+        "--dest-dir",
+        default=None,
+        help="Directory to copy selected images into (default: <source-dir>/<count>_depth).",
+    )
+    parser.add_argument(
+        "--check-point",
+        default="/Volumes/CFElab/Data_archive/Images/ISIIS/COOK/Videos2framesdepth/5000_depth/",
+        help="Directory of already-reviewed images to check against before topping up.",
+    )
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=25000,
+        help="Desired number of images in the destination directory.",
+    )
+    return parser.parse_args()
 
-    check_and_fill_images(source_directory, destination_directory, number_of_images, check_point)
+
+def main():
+    args = parse_args()
+    dest_dir = args.dest_dir or os.path.join(args.source_dir, f"{args.count}_depth")
+    check_and_fill_images(args.source_dir, dest_dir, args.count, args.check_point)
+
+
+if __name__ == "__main__":
+    main()

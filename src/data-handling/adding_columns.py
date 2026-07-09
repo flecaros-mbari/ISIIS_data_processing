@@ -18,25 +18,14 @@ Dependencies:
 - glob
 - pathlib
 - tqdm
+- argparse
 """
 
+import argparse
 import pandas as pd
 import glob
 from pathlib import Path
 from tqdm import tqdm
-
-# ==== CONFIGURATION ====
-# Pattern to find all CSV files to process
-csv_pattern = "/mnt/CFElab/Data_analysis/ISIIS/20240206_RachelCarson_detections/det_filtered/csv/*.csv"
-
-# Optional: set new directories to update image and crop paths
-# If None, paths will not be changed
-new_image_dir = None
-new_crop_dir = None
-
-# ==== FIND ALL CSV FILES MATCHING THE PATTERN ====
-# This will generate a list of all CSV file paths matching the specified pattern
-path_list = glob.glob(csv_pattern)
 
 # ==== FUNCTION TO CREATE A UNIQUE ELEMENTAL ID FOR EACH ROW ====
 def make_elemental_id(row):
@@ -61,41 +50,70 @@ def make_elemental_id(row):
     else:
         return "unknown"
 
-# ==== PROCESS EACH CSV FILE ====
-for csv_path in tqdm(path_list):
-    # Read the CSV into a DataFrame
-    df = pd.read_csv(csv_path)
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Clean and standardize detection/crop CSVs (elemental_id, predicted_class, path remapping)."
+    )
+    parser.add_argument(
+        "--csv-pattern",
+        default="/mnt/CFElab/Data_analysis/ISIIS/20240206_RachelCarson_detections/det_filtered/csv/*.csv",
+        help="Glob pattern matching the CSV files to process.",
+    )
+    parser.add_argument(
+        "--new-image-dir",
+        default=None,
+        help="If set, rewrite image_path to this directory, keeping filenames.",
+    )
+    parser.add_argument(
+        "--new-crop-dir",
+        default=None,
+        help="If set, rewrite crop_path to this directory, keeping filenames.",
+    )
+    return parser.parse_args()
 
-    # --- DROP UNUSED COLUMN ---
-    # If 'crop_name' exists, remove it
-    if "crop_name" in df.columns:
-        df = df.drop(columns=["crop_name"])
 
-    # --- UPDATE IMAGE PATHS IF NEW DIRECTORY IS PROVIDED ---
-    if "image_path" in df.columns and new_image_dir is not None:
-        # Replace the existing image path with the new directory, keeping the original filename
-        df["image_path"] = df["image_path"].apply(
-            lambda x: str(Path(new_image_dir) / Path(x).name) if pd.notna(x) else x
-        )
+def main():
+    args = parse_args()
+    path_list = glob.glob(args.csv_pattern)
 
-    # --- UPDATE CROP PATHS IF NEW DIRECTORY IS PROVIDED ---
-    if "crop_path" in df.columns and new_crop_dir is not None:
-        # Replace the existing crop path with the new directory, keeping the original filename
-        df["crop_path"] = df["crop_path"].apply(
-            lambda x: str(Path(new_crop_dir) / Path(x).name) if pd.notna(x) else x
-        )
+    for csv_path in tqdm(path_list):
+        # Read the CSV into a DataFrame
+        df = pd.read_csv(csv_path)
 
-    # --- CREATE ELEMENTAL ID ---
-    # Safely generate a unique identifier per row
-    df["elemental_id"] = df.apply(make_elemental_id, axis=1)
+        # --- DROP UNUSED COLUMN ---
+        # If 'crop_name' exists, remove it
+        if "crop_name" in df.columns:
+            df = df.drop(columns=["crop_name"])
 
-    # --- COPY CLASS COLUMN TO PREDICTED_CLASS ---
-    # For compatibility with downstream processing
-    if "class" in df.columns:
-        df["predicted_class"] = df["class"]
+        # --- UPDATE IMAGE PATHS IF NEW DIRECTORY IS PROVIDED ---
+        if "image_path" in df.columns and args.new_image_dir is not None:
+            # Replace the existing image path with the new directory, keeping the original filename
+            df["image_path"] = df["image_path"].apply(
+                lambda x: str(Path(args.new_image_dir) / Path(x).name) if pd.notna(x) else x
+            )
 
-    # --- SAVE THE UPDATED CSV BACK TO THE SAME PATH ---
-    df.to_csv(csv_path, index=False)
+        # --- UPDATE CROP PATHS IF NEW DIRECTORY IS PROVIDED ---
+        if "crop_path" in df.columns and args.new_crop_dir is not None:
+            # Replace the existing crop path with the new directory, keeping the original filename
+            df["crop_path"] = df["crop_path"].apply(
+                lambda x: str(Path(args.new_crop_dir) / Path(x).name) if pd.notna(x) else x
+            )
 
-    # Print progress for user visibility
-    print(f"Updated {csv_path}")
+        # --- CREATE ELEMENTAL ID ---
+        # Safely generate a unique identifier per row
+        df["elemental_id"] = df.apply(make_elemental_id, axis=1)
+
+        # --- COPY CLASS COLUMN TO PREDICTED_CLASS ---
+        # For compatibility with downstream processing
+        if "class" in df.columns:
+            df["predicted_class"] = df["class"]
+
+        # --- SAVE THE UPDATED CSV BACK TO THE SAME PATH ---
+        df.to_csv(csv_path, index=False)
+
+        # Print progress for user visibility
+        print(f"Updated {csv_path}")
+
+
+if __name__ == "__main__":
+    main()
