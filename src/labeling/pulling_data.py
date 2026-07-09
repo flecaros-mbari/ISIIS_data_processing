@@ -5,7 +5,9 @@ kwargs = {}
 project = 10  # 902111-CFE  project in the database (mantis.shore.mbari.org)
 # Connect to Tator
 token = os.getenv("TATOR_TOKEN")
-api = tator.get_api(host='http://mantis.shore.mbari.org', token="2229349c45dcf947de928352c59cc88e61570215")
+if not token:
+    raise SystemExit("TATOR_TOKEN environment variable is not set.")
+api = tator.get_api(host='http://mantis.shore.mbari.org', token=token)
 
 # Search for all verified media and localizations in the project
 attribute_version = ["$version::10"] # 10 is the version id for the Baseline
