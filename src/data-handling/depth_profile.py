@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 df = pd.read_csv("/Users/fernandalecaros/Downloads/isiis_labels.tsv", sep="\t")
 
 # Exclude specific classes
-excluded_classes = ['noise', 'bubble', 'football', "aggreagate", "Unknown", "artifact", "phaeocystis", "crustacean", "chaetognath", "centric_diatom", "bloom"]
+excluded_classes = ['noise', 'bubble', 'football', "aggregate", "Unknown", "artifact", "phaeocystis", "crustacean", "chaetognath", "centric_diatom", "bloom"]
 df = df[~df['Label'].isin(excluded_classes)]
 
 # Define depth bins (0-100, 100-200, etc.) and label them

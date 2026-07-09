@@ -19,8 +19,8 @@ import os
 csv_path = "/Users/fernandalecaros/Downloads/images_csv"  # Replace with actual CSV path
 output_dir = "./plots"  # Directory to save plots
 excluded_classes = [
-    'noise', 'bubble', 'football', "Unknown", "artifact",
-    "phaeocystis", "crustacean", "chaetognath", "centric_diatom"
+    'noise', 'bubble', 'football', "aggregate", "Unknown", "artifact",
+    "phaeocystis", "crustacean", "chaetognath", "centric_diatom", "bloom"
 ]
 
 depth_range_counts_by10 = {
