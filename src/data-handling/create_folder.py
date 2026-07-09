@@ -9,13 +9,11 @@ Key Features:
 2. Filters ROIs based on minimum area and optional depth requirements.
 3. Creates a unique folder structure for each class and stores the ROIs there.
 4. Supports copying existing crops or cropping new ROIs from images.
-5. Uses PyTorch and torchvision to handle images and tensor-based cropping (if needed).
-6. Processes ROIs in parallel using ThreadPoolExecutor for speed.
+5. Processes ROIs in parallel using ThreadPoolExecutor for speed.
 
 Dependencies:
 - pandas
 - PIL (Pillow)
-- PyTorch (torch, torchvision)
 - tqdm
 - argparse
 - shutil
@@ -23,13 +21,13 @@ Dependencies:
 
 import os
 import pandas as pd
-import torch
-import torchvision.transforms as T
 from PIL import Image
 import shutil
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 import argparse
+
+from roi_crop import crop_roi
 
 # ==== ARGUMENT PARSING ====
 def parse_args():
@@ -67,7 +65,7 @@ def parse_args():
     return parser.parse_args()
 
 # ==== ROI PROCESSING FUNCTION ====
-def process_roi(row, crops, roi_base_dir, device, min_area, require_m):
+def process_roi(row, crops, roi_base_dir, min_area, require_m):
     """
     Process a single ROI row from the CSV.
     
@@ -100,24 +98,20 @@ def process_roi(row, crops, roi_base_dir, device, min_area, require_m):
             shutil.copy2(src, dst)
         else:
             # Crop ROI from the original image
-            x1 = int(int(row["image_width"]) * float(row["x"]))
-            y1 = int(int(row["image_height"]) * float(row["y"]))
-            x2 = int(int(row["image_width"]) * float(row["xx"]))
-            y2 = int(int(row["image_height"]) * float(row["xy"]))
-
-            # Skip invalid coordinates
-            if x2 <= x1 or y2 <= y1:
-                print(f"Invalid coordinates in {image_path}, skipping...")
-                return
+            x1 = int(row["image_width"]) * float(row["x"])
+            y1 = int(row["image_height"]) * float(row["y"])
+            x2 = int(row["image_width"]) * float(row["xx"])
+            y2 = int(row["image_height"]) * float(row["xy"])
 
             with Image.open(image_path) as img:
                 img = img.convert("RGB")
-                transform = T.ToTensor()
-                img_tensor = transform(img).to(device)
-                roi_tensor = img_tensor[:, y1:y2, x1:x2]
-                roi = T.ToPILImage()(roi_tensor.cpu())
+                roi = crop_roi(img, x1, y1, x2, y2)
+                if roi is None:
+                    print(f"Invalid coordinates in {image_path}, skipping...")
+                    return
                 roi_filename = os.path.join(
-                    class_dir, f"{os.path.basename(image_path)}_{x1}_{y1}_{x2}_{y2}.jpg"
+                    class_dir,
+                    f"{os.path.basename(image_path)}_{int(x1)}_{int(y1)}_{int(x2)}_{int(y2)}.jpg"
                 )
                 roi.save(roi_filename)
 
@@ -129,10 +123,9 @@ def main():
     """
     Main workflow:
     1. Parse arguments
-    2. Determine device (GPU if available)
-    3. Iterate through CSV files
-    4. Process each ROI in parallel
-    5. Save cropped images or copy existing crops to class folders
+    2. Iterate through CSV files
+    3. Process each ROI in parallel
+    4. Save cropped images or copy existing crops to class folders
     """
     args = parse_args()
 
@@ -140,10 +133,6 @@ def main():
     crops = args.crops
     min_area = args.min_area
     require_m = args.require_depth
-
-    # Determine whether to use GPU
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(f"Using device: {device}")
 
     # List CSV files in the folder
     csv_files = [f for f in os.listdir(csv_folder) if f.endswith(".csv")]
@@ -185,7 +174,7 @@ def main():
                 tqdm(
                     executor.map(
                         lambda r: process_roi(
-                            r, crops, roi_base_dir, device, min_area, require_m
+                            r, crops, roi_base_dir, min_area, require_m
                         ),
                         df.to_dict(orient="records")
                     ),

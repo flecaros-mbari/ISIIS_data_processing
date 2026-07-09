@@ -6,6 +6,8 @@ import re
 from tqdm import tqdm
 from concurrent.futures import ThreadPoolExecutor
 
+from roi_crop import crop_roi
+
 def find_image_by_timestamp(root_folder, media_name, timestamp):
     """Search for the image in directories that contain 'RachelCarson' and match the timestamp."""
     print(f"Searching for {media_name} with timestamp {timestamp} in RachelCarson folders...")
@@ -74,20 +76,16 @@ def process_roi(row, image_folder, output_folder, idx, tator, ind):
         img_width, img_height = img.size
         print(f"Opened image {media_name} with size: {img_width}x{img_height}")
 
-        left = int(x * img_width)
-        top = int(y * img_height)
-        right = int(left + width * img_width)
-        bottom = int(top + height * img_height)
-        
-        # Ensure coordinates are within the image dimensions
-        left = max(0, left)
-        top = max(0, top)
-        right = min(img_width, right)
-        bottom = min(img_height, bottom)
+        left = x * img_width
+        top = y * img_height
+        right = left + width * img_width
+        bottom = top + height * img_height
 
-        # Crop the image to the bounding box
-        roi = img.crop((left, top, right, bottom))
-        print(f"Cropped ROI from {left},{top} to {right},{bottom}")
+        roi = crop_roi(img, left, top, right, bottom)
+        if roi is None:
+            print(f"Invalid coordinates in {image_path}, skipping...")
+            return
+        print(f"Cropped ROI from {int(left)},{int(top)} to {int(right)},{int(bottom)}")
 
         if not tator:
             roi_filename = f"{depth}m_{idx}_{ind}.png"
