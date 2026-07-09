@@ -11,93 +11,17 @@ import argparse
 import sys
 from pathlib import Path
 
-import numpy as np
-
 # Add the project root to the path so we can import sdcat modules
 sys.path.insert(0, str(Path(__file__).parent))
 
 from sdcat.cluster.embedding import ViTWrapper
 
-
-def load_exemplar_images(exemplar_dir: Path, extensions: tuple = (".png", ".jpg", ".jpeg")) -> list[Path]:
-    """
-    Load all image files from the exemplar directory.
-    
-    Args:
-        exemplar_dir: Path to directory containing exemplar images
-        extensions: Tuple of valid image extensions
-        
-    Returns:
-        List of image file paths
-    """
-    images = []
-    for ext in extensions:
-        images.extend(exemplar_dir.glob(f"*{ext}"))
-        images.extend(exemplar_dir.glob(f"*{ext.upper()}"))
-    
-    # Filter out any embedding-related files (those with model names in them)
-    images = [p for p in images if "_pred.txt" not in p.name and ".npy" not in p.name]
-    
-    return sorted(images)
-
-
-def compute_embeddings(vit: ViTWrapper, image_paths: list[Path], batch_size: int = 32) -> np.ndarray:
-    """
-    Compute embeddings for a list of images using ViTWrapper.
-    
-    Args:
-        vit: ViTWrapper instance
-        image_paths: List of image file paths
-        batch_size: Number of images to process in each batch
-        
-    Returns:
-        numpy array of shape (num_images, embedding_dim)
-    """
-    all_embeddings = []
-    
-    # Process images in batches
-    for i in range(0, len(image_paths), batch_size):
-        batch_paths = [str(p) for p in image_paths[i:i + batch_size]]
-        batch_embeddings, _, _ = vit.process_images(batch_paths)
-        all_embeddings.append(batch_embeddings)
-    
-    return np.vstack(all_embeddings)
-
-
-def normalize_embeddings(embeddings: np.ndarray) -> np.ndarray:
-    """
-    L2 normalize embeddings for cosine similarity via dot product.
-    
-    Args:
-        embeddings: numpy array of shape (num_images, embedding_dim)
-        
-    Returns:
-        Normalized embeddings
-    """
-    norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
-    return embeddings / (norms + 1e-8)
-
-
-def find_similar(query_embedding: np.ndarray, exemplar_embeddings: np.ndarray, top_k: int = 5) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Find the top-k most similar exemplars to the query.
-    
-    Args:
-        query_embedding: Normalized query embedding (1, embedding_dim)
-        exemplar_embeddings: Normalized exemplar embeddings (num_exemplars, embedding_dim)
-        top_k: Number of similar images to return
-        
-    Returns:
-        Tuple of (indices, similarity_scores) for top-k matches
-    """
-    # Cosine similarity via dot product (since embeddings are normalized)
-    similarities = np.dot(exemplar_embeddings, query_embedding.T).flatten()
-    
-    # Get top-k indices
-    top_indices = np.argsort(similarities)[::-1][:top_k]
-    top_scores = similarities[top_indices]
-    
-    return top_indices, top_scores
+from vit_similarity import (
+    load_exemplar_images,
+    compute_embeddings,
+    normalize_embeddings,
+    find_similar,
+)
 
 
 def main():
@@ -127,7 +51,7 @@ Examples:
         "--model",
         type=str,
         default="/mnt/DeepSea-AI/models/CFE/cfe_isiis_final-20250509/",
-        help="ViT model name (default: /Volumes/DeepSea-AI/models/CFE/cfe_isiis_final-20250509/"
+        help="ViT model name (default: /mnt/DeepSea-AI/models/CFE/cfe_isiis_final-20250509/)"
     )
     parser.add_argument(
         "--device",
