@@ -10,17 +10,17 @@ Purpose:
     - Plot proportion of each class across depth ranges.
 """
 
+import argparse
+import os
+
 import pandas as pd
 import matplotlib.pyplot as plt
-import os
 
 from depth_utils import EXCLUDED_CLASSES, extract_depth_from_path, bin_by_depth
 
-# ------------------------- CONFIG -------------------------
-csv_path = "/Users/fernandalecaros/Downloads/images_csv"  # Replace with actual CSV path
-output_dir = "./plots"  # Directory to save plots
-
-depth_range_counts_by10 = {
+# Reference counts of images available per 10 m depth bin, used to
+# normalize class proportions.
+DEPTH_RANGE_COUNTS_BY10 = {
     "0-10": 3, "10-20": 30, "20-30": 15, "30-40": 12, "40-50": 24,
     "50-60": 15, "60-70": 15, "70-80": 34, "80-90": 15, "90-100": 17,
     "100-110": 32, "110-120": 15, "120-130": 34, "130-140": 15, "140-150": 15,
@@ -28,55 +28,79 @@ depth_range_counts_by10 = {
     "200-210": 15, "210-220": 30, "220-230": 19, "230-240": 30, "240-250": 15,
     "250-260": 7, "260-270": 509, "270-280": 2765, "280-290": 1609, "290-300": 3067,
     "300-310": 1170, "310-320": 960, "320-330": 173, "330-340": 195, "340-350": 472,
-    "350-360": 480
+    "350-360": 480,
 }
 
-os.makedirs(output_dir, exist_ok=True)
 
-# ------------------------- LOAD AND CLEAN DATA -------------------------
-df = pd.read_csv(csv_path, sep=",")
-df = df[~df['predicted_label'].isin(EXCLUDED_CLASSES)]
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Normalize and plot predicted-class proportions by depth range."
+    )
+    parser.add_argument(
+        "--csv-path",
+        default="/Users/fernandalecaros/Downloads/images_csv",
+        help="CSV with 'image_path' and 'predicted_label' columns.",
+    )
+    parser.add_argument(
+        "--output-dir",
+        default="./plots",
+        help="Directory to save the per-class depth-range plots.",
+    )
+    return parser.parse_args()
 
-# Extract depth from filename
-df['depth'] = df['image_path'].apply(extract_depth_from_path)
-df = df.dropna(subset=['depth'])
 
-# ------------------------- BIN DEPTHS -------------------------
-df = bin_by_depth(df, depth_col='depth', bin_width=10, range_col='Depth Range')
+def main():
+    args = parse_args()
+    os.makedirs(args.output_dir, exist_ok=True)
 
-print("Depth Range labels in the data:")
-print(df['Depth Range'].unique())
+    # ------------------------- LOAD AND CLEAN DATA -------------------------
+    df = pd.read_csv(args.csv_path, sep=",")
+    df = df[~df['predicted_label'].isin(EXCLUDED_CLASSES)]
 
-# ------------------------- GROUP AND NORMALIZE -------------------------
-grouped = df.groupby(['Depth Range', 'predicted_label']).size().unstack(fill_value=0)
+    # Extract depth from filename
+    df['depth'] = df['image_path'].apply(extract_depth_from_path)
+    df = df.dropna(subset=['depth'])
 
-# Map depth range counts from reference dictionary
-depth_counts_mapped = grouped.index.to_series().map(depth_range_counts_by10)
+    # ------------------------- BIN DEPTHS -------------------------
+    df = bin_by_depth(df, depth_col='depth', bin_width=10, range_col='Depth Range')
 
-# Check for missing keys
-if depth_counts_mapped.isnull().any():
-    missing = depth_counts_mapped[depth_counts_mapped.isnull()].index.tolist()
-    print(f"Warning: Missing keys in depth mapping for: {missing}")
-    # Optionally fill missing values with 1 to avoid division by NaN
-    depth_counts_mapped = depth_counts_mapped.fillna(1)
+    print("Depth Range labels in the data:")
+    print(df['Depth Range'].unique())
 
-normalized = grouped.div(depth_counts_mapped, axis=0)
-print("Normalized data preview:")
-print(normalized.head())
+    # ------------------------- GROUP AND NORMALIZE -------------------------
+    grouped = df.groupby(['Depth Range', 'predicted_label']).size().unstack(fill_value=0)
 
-# ------------------------- PLOT -------------------------
-for label in normalized.columns:
-    if normalized[label].notnull().any():
-        plt.figure(figsize=(10, 6))
-        normalized[label].plot(kind='barh', color='skyblue')
-        plt.title(f"Proportion of {label} by Depth Range")
-        plt.xlabel("Proportion")
-        plt.ylabel("Depth Range (m)")
-        plt.gca().invert_yaxis()
-        plt.tight_layout()
-        plot_path = os.path.join(output_dir, f"{label}_depth_range.png")
-        plt.savefig(plot_path)
-        plt.show()
-        print(f"Plot saved to {plot_path}")
-    else:
-        print(f"No data to plot for {label}")
+    # Map depth range counts from reference dictionary
+    depth_counts_mapped = grouped.index.to_series().map(DEPTH_RANGE_COUNTS_BY10)
+
+    # Check for missing keys
+    if depth_counts_mapped.isnull().any():
+        missing = depth_counts_mapped[depth_counts_mapped.isnull()].index.tolist()
+        print(f"Warning: Missing keys in depth mapping for: {missing}")
+        # Optionally fill missing values with 1 to avoid division by NaN
+        depth_counts_mapped = depth_counts_mapped.fillna(1)
+
+    normalized = grouped.div(depth_counts_mapped, axis=0)
+    print("Normalized data preview:")
+    print(normalized.head())
+
+    # ------------------------- PLOT -------------------------
+    for label in normalized.columns:
+        if normalized[label].notnull().any():
+            plt.figure(figsize=(10, 6))
+            normalized[label].plot(kind='barh', color='skyblue')
+            plt.title(f"Proportion of {label} by Depth Range")
+            plt.xlabel("Proportion")
+            plt.ylabel("Depth Range (m)")
+            plt.gca().invert_yaxis()
+            plt.tight_layout()
+            plot_path = os.path.join(args.output_dir, f"{label}_depth_range.png")
+            plt.savefig(plot_path)
+            plt.show()
+            print(f"Plot saved to {plot_path}")
+        else:
+            print(f"No data to plot for {label}")
+
+
+if __name__ == "__main__":
+    main()
