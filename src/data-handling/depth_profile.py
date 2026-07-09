@@ -1,20 +1,22 @@
+import sys
+from pathlib import Path
+
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# Add the sibling metrics/ directory to the path so we can import the
+# shared depth-analysis helpers.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "metrics"))
+from depth_utils import EXCLUDED_CLASSES, bin_by_depth
 
 # Read the TSV file
 df = pd.read_csv("/Users/fernandalecaros/Downloads/isiis_labels.tsv", sep="\t")
 
 # Exclude specific classes
-excluded_classes = ['noise', 'bubble', 'football', "aggregate", "Unknown", "artifact", "phaeocystis", "crustacean", "chaetognath", "centric_diatom", "bloom"]
-df = df[~df['Label'].isin(excluded_classes)]
+df = df[~df['Label'].isin(EXCLUDED_CLASSES)]
 
 # Define depth bins (0-100, 100-200, etc.) and label them
-bins = list(range(0, int(df['depth'].max()) + 100, 100))
-labels = [f"{bins[i]}-{bins[i+1]}" for i in range(len(bins) - 1)]
-
-# Create a new column in the dataframe for the depth bins
-df['Depth Range'] = pd.cut(df['depth'], bins=bins, labels=labels, include_lowest=True)
+df = bin_by_depth(df, depth_col='depth', bin_width=100, range_col='Depth Range')
 
 # Group by Depth Range and Label, and count occurrences
 grouped = df.groupby(['Depth Range', 'Label']).size().unstack(fill_value=0)

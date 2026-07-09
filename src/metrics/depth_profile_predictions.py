@@ -12,16 +12,13 @@ Purpose:
 
 import pandas as pd
 import matplotlib.pyplot as plt
-import re
 import os
+
+from depth_utils import EXCLUDED_CLASSES, extract_depth_from_path, bin_by_depth
 
 # ------------------------- CONFIG -------------------------
 csv_path = "/Users/fernandalecaros/Downloads/images_csv"  # Replace with actual CSV path
 output_dir = "./plots"  # Directory to save plots
-excluded_classes = [
-    'noise', 'bubble', 'football', "aggregate", "Unknown", "artifact",
-    "phaeocystis", "crustacean", "chaetognath", "centric_diatom", "bloom"
-]
 
 depth_range_counts_by10 = {
     "0-10": 3, "10-20": 30, "20-30": 15, "30-40": 12, "40-50": 24,
@@ -38,20 +35,14 @@ os.makedirs(output_dir, exist_ok=True)
 
 # ------------------------- LOAD AND CLEAN DATA -------------------------
 df = pd.read_csv(csv_path, sep=",")
-df = df[~df['predicted_label'].isin(excluded_classes)]
+df = df[~df['predicted_label'].isin(EXCLUDED_CLASSES)]
 
 # Extract depth from filename
-def extract_depth(path):
-    match = re.search(r'(\d+\.\d+)m', path)
-    return float(match.group(1)) if match else None
-
-df['depth'] = df['image_path'].apply(extract_depth)
+df['depth'] = df['image_path'].apply(extract_depth_from_path)
 df = df.dropna(subset=['depth'])
 
 # ------------------------- BIN DEPTHS -------------------------
-bins = list(range(0, int(df['depth'].max()) + 10, 10))
-labels = [f"{bins[i]}-{bins[i+1]}" for i in range(len(bins) - 1)]
-df['Depth Range'] = pd.cut(df['depth'], bins=bins, labels=labels, include_lowest=True)
+df = bin_by_depth(df, depth_col='depth', bin_width=10, range_col='Depth Range')
 
 print("Depth Range labels in the data:")
 print(df['Depth Range'].unique())
