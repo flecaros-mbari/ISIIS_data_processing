@@ -63,7 +63,7 @@ def filter_time_and_pressure_data(df, filter_columns = False):
 
     # Filter for the columns of preassure (we are intereset in the ctd preassure)
     if filter_columns:
-        filter_columns = time_columns + pressure_columns
+        filtered_df = df[time_columns + pressure_columns]
     else:
         filtered_df = df
 
