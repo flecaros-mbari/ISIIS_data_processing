@@ -101,18 +101,27 @@ pip install -r requirements.txt
 ```
 
 `environment.yml` only pins the environment name/prefix — all Python dependencies come
-from `requirements.txt`. A few dependencies used by specific scripts are **not** pinned
-there and need to be installed separately:
+from `requirements.txt`.
 
-- **`transformers`** (and a CUDA-capable PyTorch build if you want GPU inference) — used
-  by `predict/huggingface.py`.
-- **`fiftyone`** — used by `labeling/download.py`.
-- **`sdcat`** — MBARI's clustering/embedding toolkit, used by `cosine-distance/run-vss.py`
-  and `cosine-distance/cosine_distance.py` for `ViTWrapper`. Install it separately (e.g.
-  `pip install sdcat`) and confirm the version matches what's available to you.
+One dependency isn't a normal pip install and needs manual setup:
+
+- **`sdcat`** — MBARI's clustering/embedding toolkit (github.com/mbari-org/sdcat), used by
+  `cosine-distance/run-vss.py` and `cosine-distance/cosine_distance.py` for `ViTWrapper`.
+  It's not published as a plain version pin; install it from source (clone the repo, then
+  `pip install .` or `pip install -e .`) into this environment. If you keep it in a
+  separate environment instead (as some setups do), you'll need to run the
+  `cosine-distance/` scripts there rather than in `isiis`.
 
 You'll also need **`ffmpeg`** installed as a system binary (not a Python package) for
 `data-handling/avi2mp4.py`.
+
+**Note on `requirements.txt` accuracy:** `torch`, `torchvision`, `tator`, `pygame`, and
+`openpyxl` are pinned in `requirements.txt` (they're required by `predict/huggingface.py`,
+`cosine-distance/`, `labeling/pulling_data.py`, `data-handling/choosing-data.py`, and
+`volume/*.py`'s Excel I/O, respectively) but may not always be present in every `isiis`
+environment — if a script fails with `ModuleNotFoundError` for one of these, install it
+explicitly (`pip install torch torchvision`, etc.) or run that script from an environment
+that already has it.
 
 ### Environment variables
 
