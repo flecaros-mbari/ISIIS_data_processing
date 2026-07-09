@@ -13,60 +13,41 @@ vector similarity search system (cosine similarity). It computes a combined
 The idea is to combine both signals to estimate how "anomalous" or uncertain
 a prediction might be.
 
-The final anomalous score is computed as:
+The final anomaly score is computed as:
 
-    anomaly socre = alpha * model_score + (1 - alpha) * cosine_similarity
+    anomaly_score = alpha * model_score + (1 - alpha) * cosine_similarity
 
 Where:
     model_score = confidence score from the classification model
     cosine_similarity = (1 - cosine_distance)
 
-The script then visualizes the distribution of anomlay scores using a histogram.
+The script then visualizes the distribution of anomaly scores using a
+histogram, and optionally writes the scored rows back out to a CSV.
 
 Inputs
 ------
-A csv 
+A CSV produced by joining predict/huggingface.py's classification output
+with cosine-distance/cosine_distance.py's vector-search output.
 
 Expected columns in the CSV:
-    predicted_label   -> label predicted by the model
-    score             -> confidence score of the model prediction [0,1]
-    prediction_1      -> closest label from vector similarity search
-    prediction_2      -> second closest label
-    prediction_3      -> third closest label
-    score_1           -> cosine distance to closest vector match
-    ground_truth_label (optional, used for evaluation)
+    class               -> label predicted by the classification model
+    score                -> confidence score of the model prediction [0,1]
+    vector_prediction_1  -> closest label from vector similarity search
+    vector_score_1       -> cosine distance to closest vector match
 
 Output
 ------
-A histogram showing the distribution of computed risk scores.
+A histogram showing the distribution of computed anomaly scores, and
+(with --output-csv) the input data with an added anomaly_score column.
 """
+
+import argparse
 
 import pandas as pd
 import matplotlib.pyplot as plt
 
-# -------------------------------------------------------------------------
-# Load dataset
-# -------------------------------------------------------------------------
 
-# Read the CSV file containing predictions and similarity scores
-data = pd.read_csv("final_all_dataset.csv")
-
-# -------------------------------------------------------------------------
-# Parameters
-# -------------------------------------------------------------------------
-
-# Weight controlling the contribution of the model confidence score.
-# alpha close to 1 → trust the model more
-# alpha close to 0 → trust the cosine similarity more
-# Here you can try different alpha's value if necesary 
-alpha = 0.3
-
-
-# -------------------------------------------------------------------------
-# Anomlaly score computation
-# -------------------------------------------------------------------------
-
-def resolve_label(row):
+def compute_anomaly_score(row, alpha, verbose=False):
     """
     Compute a combined anomaly score for a single row.
 
@@ -77,6 +58,12 @@ def resolve_label(row):
     ----------
     row : pandas.Series
         A row from the dataset containing prediction and similarity data.
+    alpha : float
+        Weight controlling the contribution of the model confidence score.
+        alpha close to 1 -> trust the model more.
+        alpha close to 0 -> trust the cosine similarity more.
+    verbose : bool
+        If True, print intermediate values for each row.
 
     Returns
     -------
@@ -84,67 +71,84 @@ def resolve_label(row):
         Computed anomaly score.
     """
 
-    # Model prediction information
-    model_label = row["predicted_label"]
     model_score = row["score"]
-
-    # Vector similarity search results
-    cosine_label = row["prediction_1"]
-    cosine_dist = row["score_1"]
-
-    # Top-3 cosine similarity predictions (not currently used for computation,
-    # but may be useful for debugging or future extensions)
-    top3_labels = [
-        row["prediction_1"],
-        row["prediction_2"],
-        row["prediction_3"],
-    ]
+    cosine_dist = row["vector_score_1"]
 
     # Convert cosine distance to cosine similarity
     cosine_similarity = 1 - cosine_dist
 
-    # Compute weighted risk score
-    risk = alpha * model_score + (1 - alpha) * cosine_similarity
+    # Compute weighted anomaly score
+    anomaly_score = alpha * model_score + (1 - alpha) * cosine_similarity
 
-    # Debug print showing intermediate values
-    print(
-        f"For this sample -> model score: {model_score}, "
-        f"cosine similarity: {cosine_similarity}, "
-        f"combined anomaly: {risk}"
+    if verbose:
+        print(
+            f"For this sample -> model score: {model_score}, "
+            f"cosine similarity: {cosine_similarity}, "
+            f"combined anomaly: {anomaly_score}"
+        )
+
+    return anomaly_score
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Compute a combined model-confidence / vector-similarity anomaly score."
+    )
+    parser.add_argument(
+        "--input-csv",
+        default="final_all_dataset.csv",
+        help="CSV with 'class', 'score', 'vector_prediction_1', 'vector_score_1' columns.",
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=0.3,
+        help="Weight for the model confidence score vs. cosine similarity (default: 0.3).",
+    )
+    parser.add_argument(
+        "--output-csv",
+        default=None,
+        help="If set, write the input data with an added anomaly_score column to this path.",
+    )
+    parser.add_argument(
+        "--no-show",
+        action="store_true",
+        help="Skip displaying the histogram (useful for headless/batch runs).",
+    )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print per-row intermediate score values.",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    data = pd.read_csv(args.input_csv)
+
+    data["anomaly_score"] = data.apply(
+        lambda row: compute_anomaly_score(row, args.alpha, args.verbose), axis=1
     )
 
-    return risk
+    if args.output_csv:
+        data.to_csv(args.output_csv, index=False)
+        print(f"Saved scored data to {args.output_csv}")
+
+    if not args.no_show:
+        plt.hist(
+            data["anomaly_score"],
+            bins=100,
+            label="scores",
+            alpha=0.7,
+        )
+        plt.xlabel("Anomaly")
+        plt.ylabel("Count")
+        plt.title(f"Anomaly values vs frequency (alpha = {args.alpha})")
+        plt.legend()
+        plt.show()
 
 
-# -------------------------------------------------------------------------
-# Apply risk score calculation to the entire dataset
-# -------------------------------------------------------------------------
-
-# Compute risk score for every row
-data["anomaly_score"] = data.apply(resolve_label, axis=1)
-
-
-# -------------------------------------------------------------------------
-# Visualization
-# -------------------------------------------------------------------------
-
-# Plot histogram of risk scores
-plt.hist(
-    data["anomaly_score"],
-    bins=100,      # number of bins in the histogram
-    label=["scores"],
-    alpha=0.7
-)
-
-# Label axes
-plt.xlabel("Anomaly")
-plt.ylabel("Count")
-
-# Plot title showing alpha value used
-plt.title(f"Anomaly values vs frequency (alpha = {alpha})")
-
-# Display legend
-plt.legend()
-
-# Show the plot
-plt.show()
+if __name__ == "__main__":
+    main()
