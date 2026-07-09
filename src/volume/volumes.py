@@ -8,6 +8,7 @@ Purpose:
     - Compute carbon flux per particle and save results to Excel.
 """
 
+import argparse
 import os
 
 from volume_core import (
@@ -22,11 +23,8 @@ from volume_core import (
 )
 
 
-if __name__ == "__main__":
-    directory_path = "/Volumes/CFElab/Data_archive/Images/geltrap_microscopy/EXPORTS2/Classified_particles_fromModel_and_validated/"
-    metadata_excel = "JC_trap_summary.xlsx"
-    output_excel = "processed_image_data.xlsx"
-
+def process_directory(directory_path, metadata_excel):
+    """Walk directory_path for *.tiff "JC" images and compute per-particle flux."""
     files_to_process = [
         os.path.join(dirpath, file)
         for dirpath, _, files in os.walk(directory_path)
@@ -63,8 +61,42 @@ if __name__ == "__main__":
             "Second Fragment": second_frag
         })
 
-    save_to_excel(processed_data, output_excel)
+    return processed_data
 
-    # Optional: Total flux calculation
-    total_flux = sum(item["Flux (mol C m-2 d-1)"] for item in processed_data if item["Flux (mol C m-2 d-1)"] is not None)
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Compute gel-trap particle volumes and carbon flux from microscopy images."
+    )
+    parser.add_argument(
+        "--directory",
+        default="/Volumes/CFElab/Data_archive/Images/geltrap_microscopy/EXPORTS2/Classified_particles_fromModel_and_validated/",
+        help="Directory of classified particle images to process.",
+    )
+    parser.add_argument(
+        "--metadata-excel",
+        default="JC_trap_summary.xlsx",
+        help="Excel file with per-trap elapsed time and magnification metadata.",
+    )
+    parser.add_argument(
+        "--output-excel",
+        default="processed_image_data.xlsx",
+        help="Path to write the processed particle data.",
+    )
+    return parser.parse_args()
+
+
+def main():
+    args = parse_args()
+
+    processed_data = process_directory(args.directory, args.metadata_excel)
+    save_to_excel(processed_data, args.output_excel)
+
+    total_flux = sum(
+        item["Flux (mol C m-2 d-1)"] for item in processed_data if item["Flux (mol C m-2 d-1)"] is not None
+    )
     print(f"Total Flux: {total_flux} mol C m-2 d-1")
+
+
+if __name__ == "__main__":
+    main()
