@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 import pytz
 from pathlib import Path
 import os
+import shutil
 import numpy as np
+from tqdm import tqdm
 
 def parse_log_date(year, yearday, time_string, timezone):
     """Parses the log date into a datetime object.
@@ -109,11 +111,22 @@ def find_matching_timestamps(df1, df2, defase= 0, threshold=8, raw = False):
     df1['timestamp'] = pd.to_datetime(df1['timestamp'], errors='coerce')
     df2['iso_datetime'] = pd.to_datetime(df2['iso_datetime'], errors='coerce')
 
+    # Filter out CTD rows with non-positive depth (some depths in the ctd file are negative)
+    if raw:
+        depth_values = pd.to_numeric(df1['rov_ctd_pressure'], errors='coerce')
+    elif 'depth' in df1.columns:
+        depth_values = pd.to_numeric(df1['depth'], errors='coerce')
+    else:
+        depth_values = pd.to_numeric(df1['DepSM'], errors='coerce')
+
+    # Just depths > 0
+    df1 = df1[depth_values > 0].reset_index(drop=True)
+
     # Timestmaps in UTC
     df1['timestamp'] = df1['timestamp'].apply(lambda x: x if x.tzinfo else pytz.utc.localize(x))
     df2['iso_datetime'] = df2['iso_datetime'].apply(lambda x: x if x.tzinfo else pytz.utc.localize(x))
     
-    # Aplying the defase in the images (their clock runs behind of the ctd in the rov)
+    # Aplying the defase in the images (their clock runs ahead of the ctd in the rov)
     df2['adjusted_iso_datetime'] = df2['iso_datetime'].apply(lambda x: add_seconds(x, defase))
     
     # Expanding dimensions to calculate the diferente with matrices 
@@ -133,15 +146,17 @@ def find_matching_timestamps(df1, df2, defase= 0, threshold=8, raw = False):
     results = []
 
     # Apply the threshold to consider the match
-    for i, min_idx in enumerate(min_indices):
+    for i, min_idx in enumerate(tqdm(min_indices, desc="Matching timestamps")):
         if min_values[i] <= threshold:
             ts_rovctd = df2.iloc[i]['iso_datetime']
 
             # The name of the pressure dependes of the data
             if raw:
                 depth_rovctd = df1.iloc[min_idx]['rov_ctd_pressure'].strip()
-            else:
+            elif 'depth' in df1.columns:
                 depth_rovctd = df1.iloc[min_idx]['depth']
+            else:
+                depth_rovctd = df1.iloc[min_idx]['DepSM']
             ts_img = df1.iloc[min_idx]['timestamp']
             img_path = df2.iloc[i]['path']
 
@@ -279,6 +294,12 @@ def main():
         help="Defase (offset) in seconds to adjust timestamps (default: 69)."
     )
     parser.add_argument(
+        "--fps",
+        type=int,
+        default=15,
+        help="Images per second taken form the video"
+    )
+    parser.add_argument(
         "--raw",
         action="store_true",
         help="Indicates that the log file is raw text format, not preprocessed CSV."
@@ -303,11 +324,17 @@ def main():
     raw = args.raw
     rename = args.rename
     verbose = args.verbose
+    fps = args.fps
 
     # Read or parse log file
     if not raw:
-        df = pd.read_csv(file_path)
-        df['timestamp'] = df.apply(create_timestamp, axis=1)
+        df = pd.read_csv(
+                    file_path,
+                    sep =",",
+                    encoding="latin-1"  
+)
+        # df = pd.read_csv(file_path)
+        # df['timestamp'] = df.apply(create_timestamp, axis=1)
     else:
         df = parse_log_file_to_dataframe(file_path)
         df = filter_time_and_pressure_data(df)
@@ -321,23 +348,30 @@ def main():
     index = 0
 
     # Iterate over images
-    for root, dirs, files in os.walk(images_dir_path):
-        for file in files:
-            if file.endswith('.jpg'):
-                matches = re.findall(pattern, file)
-                if matches:
-                    instrument, _, datetime_str, frame_num = matches[0]
-                    datetime_str = datetime_str.replace('-', ':') + "Z"
+    print("Scanning for image files...")
+    jpg_files = [
+        (root, file)
+        for root, dirs, files in os.walk(images_dir_path)
+        for file in files
+        if file.endswith('.jpg')
+    ]
+    print(f"Found {len(jpg_files)} JPG files to match.")
 
-                    dt = datetime.strptime(datetime_str, "%Y:%m:%d %H:%M:%S.%fZ")
-                    dt = add_seconds(dt, float(frame_num))
-                    dt = pytz.timezone('America/Los_Angeles').localize(dt)
-                    dt_utc = dt.astimezone(pytz.utc)
+    for root, file in tqdm(jpg_files, desc="Parsing image timestamps"):
+        matches = re.findall(pattern, file)
+        if matches:
+            instrument, _, datetime_str, frame_num = matches[0]
+            datetime_str = datetime_str.replace('-', ':') + "Z"
 
-                    iso_datetime[index] = dt_utc
-                    instrument_type[index] = instrument
-                    path[index] = os.path.join(root, file)
-                    index += 1
+            dt = datetime.strptime(datetime_str, "%Y:%m:%d %H:%M:%S.%fZ")
+            dt = add_seconds(dt, float(frame_num)/fps)
+            # dt = pytz.timezone('America/Los_Angeles').localize(dt)
+            # dt_utc = dt.astimezone(pytz.utc)
+
+            iso_datetime[index] = dt # dt_utc
+            instrument_type[index] = instrument
+            path[index] = os.path.join(root, file)
+            index += 1
 
     iso_datetime_df = pd.DataFrame({
         'iso_datetime': pd.Series(iso_datetime),
@@ -363,26 +397,31 @@ def main():
     # Rename files if requested
     if rename:
         print("Renaming matched files...")
-        for ts1, depth, ts2, p in matching_timestamps:
+        for ts1, depth, ts2, p in tqdm(matching_timestamps, desc="Renaming files"):
             try:
                 original_name, extension = os.path.splitext(os.path.basename(p))
-                if original_name.endswith('m'):
+                if re.search(r'_\d+m$', original_name):
                     if verbose:
-                        print(f"Skipping {p} as it ends with 'm'")
+                        print(f"Skipping {p} as it already has a depth suffix")
                     continue
 
                 suffix = f'_{depth}m'
                 new_file_name = f'{original_name}{suffix}{extension}'
-                new_file_path = os.path.join(os.path.dirname(p), new_file_name)
-                os.rename(p, new_file_path)
+
+                # Replace 'Videos2frames' with 'Videos2framesdepth' in the path
+                new_file_path = p.replace('Videos2frames', 'Videos2framesdepth')
+                new_dir = os.path.dirname(new_file_path)
+                os.makedirs(new_dir, exist_ok=True)
+
+                new_file_path = os.path.join(new_dir, new_file_name)
+                shutil.copy2(p, new_file_path)
 
                 if verbose:
-                    print(f'Renamed {p} to {new_file_path}')
+                    print(f'Copied {p} to {new_file_path}')
             except Exception as e:
-                print(f'Error renaming {p}: {e}')
+                print(f'Error copying {p}: {e}')
 
         print(f"Summary: {len(matching_timestamps)} matches out of {len(iso_datetime_df)} images")
-
 
 if __name__ == "__main__":
     main()

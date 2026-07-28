@@ -62,13 +62,18 @@ def parse_args():
         action="store_true",
         help="Only process ROIs whose image filenames contain 'm'."
     )
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Print each ROI as it is copied/cropped and each one that is skipped."
+    )
     return parser.parse_args()
 
 # ==== ROI PROCESSING FUNCTION ====
-def process_roi(row, crops, roi_base_dir, min_area, require_m):
+def process_roi(row, crops, roi_base_dir, min_area, require_m, verbose=False):
     """
     Process a single ROI row from the CSV.
-    
+
     If 'crops' is True:
         - Copies existing crop to the appropriate class folder.
     Else:
@@ -81,8 +86,12 @@ def process_roi(row, crops, roi_base_dir, min_area, require_m):
     try:
         image_path = row["image_path"]
         if float(row["area"]) < min_area:
+            if verbose:
+                print(f"Skipping {image_path}: area below {min_area}")
             return
         if require_m and "m" not in os.path.basename(image_path):
+            if verbose:
+                print(f"Skipping {image_path}: missing depth suffix")
             return
 
         # Determine folder for the class
@@ -96,6 +105,8 @@ def process_roi(row, crops, roi_base_dir, min_area, require_m):
             img_name = os.path.basename(src)
             dst = os.path.join(class_dir, img_name)
             shutil.copy2(src, dst)
+            if verbose:
+                print(f"Copied {src} -> {dst}")
         else:
             # Crop ROI from the original image
             x1 = int(row["image_width"]) * float(row["x"])
@@ -114,6 +125,8 @@ def process_roi(row, crops, roi_base_dir, min_area, require_m):
                     f"{os.path.basename(image_path)}_{int(x1)}_{int(y1)}_{int(x2)}_{int(y2)}.jpg"
                 )
                 roi.save(roi_filename)
+                if verbose:
+                    print(f"Saved ROI {roi_filename}")
 
     except Exception as e:
         print(f"Error with {row.get('image_path', 'unknown')}: {e}")
@@ -133,6 +146,7 @@ def main():
     crops = args.crops
     min_area = args.min_area
     require_m = args.require_depth
+    verbose = args.verbose
 
     # List CSV files in the folder
     csv_files = [f for f in os.listdir(csv_folder) if f.endswith(".csv")]
@@ -174,7 +188,7 @@ def main():
                 tqdm(
                     executor.map(
                         lambda r: process_roi(
-                            r, crops, roi_base_dir, min_area, require_m
+                            r, crops, roi_base_dir, min_area, require_m, verbose
                         ),
                         df.to_dict(orient="records")
                     ),
