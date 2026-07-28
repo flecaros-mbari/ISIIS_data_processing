@@ -17,6 +17,12 @@ The ISIIS images look like this:
 
 ![Alt text](<assets/img/CFE_ISIIS-243-2024-03-19 12-58-20.186_0588 (1).jpg>)
 
+## Documentation
+
+See the [documentation site](https://flecaros-mbari.github.io/ISIIS_data_processing/) for
+the ROI [labeling guide](https://flecaros-mbari.github.io/ISIIS_data_processing/labeling-guide.html)
+(class taxonomy with example crops).
+
 ## Repository structure
 
 ```
