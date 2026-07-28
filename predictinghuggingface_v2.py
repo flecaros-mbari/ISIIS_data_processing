@@ -19,11 +19,6 @@ def parse_args():
         required=True,
         help="Directory containing CSV files to process. This path must be a folder, not a csv",
     )
-    parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Print the predicted class for every image.",
-    )
     return parser.parse_args()
 
 def load_model(model_name):
@@ -34,7 +29,7 @@ def load_model(model_name):
     print(f"[INFO] Model loaded successfully on {device}.")
     return model, processor, device
 
-def predict_class(image_path, model, processor, device, verbose=False):
+def predict_class(image_path, model, processor, device):
     """Predicts the class for a Region of Interest (ROI) in a given image."""
     try:
         image = Image.open(image_path).convert("RGB")
@@ -48,9 +43,6 @@ def predict_class(image_path, model, processor, device, verbose=False):
             scores_dict = {model.config.id2label[i]: probabilities[i] for i in range(len(probabilities))}
             scores_dict["class"] = predicted_class
 
-        if verbose:
-            print(f"[VERBOSE] {image_path} -> {predicted_class} ({probabilities[predicted_class_idx]:.3f})")
-
         # Free memory
         del inputs, outputs
         torch.cuda.empty_cache()
@@ -62,16 +54,16 @@ def predict_class(image_path, model, processor, device, verbose=False):
         print(f"[ERROR] Error processing image {image_path}: {e}")
         return {"class": "Error"}
 
-def process_row(row, model, processor, device, verbose=False):
-    return predict_class(row['crop_path'], model, processor, device, verbose)
+def process_row(row, model, processor, device):
+    return predict_class(row['crop_path'], model, processor, device)
 
-def classify_csv(file_path, model, processor, device, verbose=False):
+def classify_csv(file_path, model, processor, device):
     """Step 1: Classify Unknown entries in the CSV using the model."""
     try:
         data = pd.read_csv(file_path)
         if True:
         #if "Unknown" in data['class'].values:
-
+            
             data["crop_path"] = data["crop_path"].apply(fix_path)
             results = []
             for _, row in tqdm(
@@ -80,7 +72,7 @@ def classify_csv(file_path, model, processor, device, verbose=False):
                 desc=f"Classifying {os.path.basename(file_path)}",
                 unit="row"
             ):
-                result = process_row(row, model, processor, device, verbose)
+                result = process_row(row, model, processor, device)
                 results.append(result)
 
             results_df = pd.DataFrame(results)
@@ -100,7 +92,7 @@ def classify_csv(file_path, model, processor, device, verbose=False):
         return None
 
 def fix_path(path):
-    # normalizes a file system path by simplifying it,
+    # normalizes a file system path by simplifying it, 
     # which includes collapsing redundant separators and resolving up-level references like ../
     path = os.path.normpath(path)
 
@@ -116,7 +108,7 @@ def fix_path(path):
 
     # Reconstruct /
     new_path = "/" + "/".join(parts)
-
+    
     return new_path
 
 def postprocess_csv(file_path):
@@ -127,7 +119,6 @@ def postprocess_csv(file_path):
         if "crop_path" not in df.columns:
             print(f"[WARNING] Skipping {file_path}: missing crop_path column")
             return
-        
 
         crop_idx = df.columns.get_loc("crop_path")
 
@@ -162,7 +153,6 @@ def main():
     args = parse_args()
     model_name = args.model
     csv_dir = args.csv_dir
-    verbose = args.verbose
 
     model, processor, device = load_model(model_name)
 
@@ -173,7 +163,7 @@ def main():
     classified_files = []
     with ThreadPoolExecutor(max_workers=8) as executor:
         future_to_file = {
-            executor.submit(classify_csv, os.path.join(csv_dir, csv_file), model, processor, device, verbose): csv_file
+            executor.submit(classify_csv, os.path.join(csv_dir, csv_file), model, processor, device): csv_file
             for csv_file in csv_files
         }
         for future in tqdm(
