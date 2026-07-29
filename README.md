@@ -19,9 +19,8 @@ The ISIIS images look like this:
 
 ## Documentation
 
-See the [documentation site](https://flecaros-mbari.github.io/ISIIS_data_processing/) for
-the ROI [labeling guide](https://flecaros-mbari.github.io/ISIIS_data_processing/labeling-guide.html)
-(class taxonomy with example crops).
+See the [ROI labeling guide](https://flecaros-mbari.github.io/ISIIS_data_processing/species-guide.html)
+(class taxonomy with example crops) for the documentation site.
 
 ## Repository structure
 
