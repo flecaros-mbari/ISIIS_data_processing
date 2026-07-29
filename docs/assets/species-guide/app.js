@@ -48,6 +48,62 @@
     });
   }
 
+  function renderWelcome() {
+    const detail = document.getElementById("detail");
+    const totalCount = SPECIES.reduce((sum, s) => sum + s.count, 0);
+    const profileCount = SPECIES.filter((s) => s.hasProfile).length;
+
+    const categoryRows = CATEGORIES.map((cat) => {
+      const items = SPECIES.filter((s) => s.category === cat);
+      const catTotal = items.reduce((sum, s) => sum + s.count, 0);
+      const catProfiles = items.filter((s) => s.hasProfile).length;
+      return `<tr>
+        <td>${cat}</td>
+        <td>${items.length}</td>
+        <td>${catTotal.toLocaleString()}</td>
+        <td>${catProfiles ? `${catProfiles} / ${items.length}` : "—"}</td>
+      </tr>`;
+    }).join("");
+
+    detail.innerHTML = `
+      <div class="detail-header">
+        <h2>ISIIS Labeling Guide</h2>
+        <p class="meta-line">${SPECIES.length} classes · ${totalCount.toLocaleString()} labeled examples in the <code>Baseline</code> dataset</p>
+      </div>
+
+      <p class="description">This guide documents the class taxonomy used to label regions of interest (ROIs) in
+      imagery from the ISIIS (In Situ Ichthyoplankton Imaging System) instrument. Every thumbnail is an actual
+      crop from the <code>Baseline</code> labeled dataset
+      (<code>/mnt/CFElab/Data_analysis/ISIIS/AI/Baseline</code>), so use it as a visual reference when deciding
+      which class an ROI belongs to.</p>
+
+      <p class="description">Descriptions are based on visual appearance in the shadowgraph imagery, not a formal
+      taxonomic identification — when a crop is ambiguous between two similar-looking classes, open that class's
+      page and check its "commonly confused with" note, or flag it for a second opinion.</p>
+
+      <dl class="taxo-box" style="grid-template-columns: 1fr;">
+        <dt>Where labeling happens</dt>
+        <dd>ROIs are labeled/verified in <a href="http://mantis.shore.mbari.org" target="_blank" rel="noopener">Tator</a>
+        (project <code>902111-CFE</code>). Verified labels are exported to <code>isiis_labels.tsv</code> via
+        <a href="https://github.com/flecaros-mbari/ISIIS_data_processing/blob/main/src/labeling/pulling_data.py" target="_blank" rel="noopener">pulling_data.py</a>,
+        and a curated snapshot (images, crops, and both YOLO <code>.txt</code> and Pascal VOC <code>.xml</code>
+        annotation formats) lives in the <code>Baseline</code> dataset.</dd>
+      </dl>
+
+      <p class="description" style="margin-bottom:0.6rem;"><strong>Class breakdown by category</strong> — counts are labeled examples in the
+      current Baseline set; the last column shows how many classes in that category have a full profile
+      (3-image gallery + WoRMS taxonomy) built out so far.</p>
+      <table class="overview-table">
+        <thead><tr><th>Category</th><th>Classes</th><th>Examples</th><th>Full profiles</th></tr></thead>
+        <tbody>${categoryRows}</tbody>
+      </table>
+
+      <p class="description">Pick a class from the list on the right to see its documentation — a reference photo,
+      a callout of its key features, a comparison photo of the class it's most often confused with, and (where
+      built) its WoRMS taxonomy.</p>
+    `;
+  }
+
   function taxoRow(dtText, ddHtml) {
     return `<dt>${dtText}</dt><dd>${ddHtml}</dd>`;
   }
@@ -132,6 +188,17 @@
     renderDetail(s);
     setActive(id);
     history.replaceState(null, "", "#" + id);
+    scrollToTop();
+  }
+
+  function showWelcome() {
+    renderWelcome();
+    setActive(null);
+    history.replaceState(null, "", location.pathname + location.search);
+    scrollToTop();
+  }
+
+  function scrollToTop() {
     document.getElementById("detail").scrollTop = 0;
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   }
@@ -142,7 +209,14 @@
     if (activeId) setActive(activeId.dataset.id);
   });
 
+  const titleLink = document.getElementById("site-title");
+  if (titleLink) titleLink.addEventListener("click", (e) => { e.preventDefault(); showWelcome(); });
+
   renderSidebar("");
-  const startId = (location.hash || "").replace("#", "") || "copepod";
-  selectSpecies(byId[startId] ? startId : "copepod");
+  const startId = (location.hash || "").replace("#", "");
+  if (startId && byId[startId]) {
+    selectSpecies(startId);
+  } else {
+    showWelcome();
+  }
 })();
