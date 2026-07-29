@@ -46,7 +46,22 @@ body {
 }
 
 .topbar h1 { font-size: 1.25rem; margin: 0; }
+.topbar h1 a { color: var(--text); text-decoration: none; }
+.topbar h1 a:hover { color: var(--accent); }
 .topbar a { color: var(--text-dim); font-size: 0.9rem; }
+
+.overview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.87rem;
+  margin: 0 0 1.4rem;
+}
+.overview-table th, .overview-table td {
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+.overview-table th { color: var(--text-dim); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
 
 .layout {
   display: grid;
