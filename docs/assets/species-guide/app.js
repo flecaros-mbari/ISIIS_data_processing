@@ -133,24 +133,31 @@
 
     const t = s.taxonomy;
     const similar = s.similar ? byId[s.similar.id] : null;
-    const similarImg = similar ? (similar.hasProfile ? similar.images.good : fallbackImage(similar.id)) : null;
+
+    const taxoBlock = s.isBiological
+      ? `<dl class="taxo-box">
+          ${taxoRow("Rank", t.rank)}
+          ${taxoRow("Name", `${t.name}${t.authority ? " " + t.authority : ""}`)}
+          ${taxoRow("Classification", [t.phylum, t.className].filter(Boolean).join(" › "))}
+          ${taxoRow("Environment", t.environment)}
+          ${t.vernacular ? taxoRow("Also known as", t.vernacular) : ""}
+          ${taxoRow("WoRMS AphiaID", `<a href="${s.wormsUrl}" target="_blank" rel="noopener">${s.wormsUrl.split("id=")[1]} ↗</a>`)}
+        </dl>`
+      : `<div class="pending-banner">Not a taxonomic group — this is a ${s.category.toLowerCase().includes("non-biological") ? "non-biological imaging category" : "morphological/detrital category"}, so there's no WoRMS entry for it.</div>`;
+
+    const sourceLine = s.isBiological
+      ? `<p class="source-line">Taxonomy and AphiaID via <a href="${s.wormsUrl}" target="_blank" rel="noopener">WoRMS</a>. Descriptive text written from general planktonic biology (WoRMS records are taxonomic, not prose descriptions).</p>`
+      : "";
 
     detail.innerHTML = `
       <div class="detail-header">
-        <h2>${s.label} <span class="sci-name">— ${t.name}</span></h2>
+        <h2>${s.label}${s.isBiological ? ` <span class="sci-name">— ${t.name}</span>` : ""}</h2>
         <p class="meta-line">
           <span class="badge">${s.category}</span><span class="sep">·</span>${s.count.toLocaleString()} labeled examples in Baseline
         </p>
       </div>
 
-      <dl class="taxo-box">
-        ${taxoRow("Rank", t.rank)}
-        ${taxoRow("Name", `${t.name}${t.authority ? " " + t.authority : ""}`)}
-        ${taxoRow("Classification", [t.phylum, t.className].filter(Boolean).join(" › "))}
-        ${taxoRow("Environment", t.environment)}
-        ${taxoRow("Also known as", t.vernacular)}
-        ${taxoRow("WoRMS AphiaID", `<a href="${s.wormsUrl}" target="_blank" rel="noopener">${t.aphiaId} ↗</a>`)}
-      </dl>
+      ${taxoBlock}
 
       <div class="gallery">
         <figure class="shot">
@@ -171,7 +178,7 @@
 
       ${s.similar ? `<div class="similar-note">⚠️ Commonly confused with <a href="#" data-goto="${s.similar.id}">${similar ? similar.label : s.similar.id}</a> — ${s.similar.reason}</div>` : ""}
 
-      <p class="source-line">Taxonomy and AphiaID via <a href="${s.wormsUrl}" target="_blank" rel="noopener">WoRMS</a>. Descriptive text written from general planktonic biology (WoRMS records are taxonomic, not prose descriptions).</p>
+      ${sourceLine}
     `;
 
     detail.querySelectorAll("[data-goto]").forEach((el) => {
