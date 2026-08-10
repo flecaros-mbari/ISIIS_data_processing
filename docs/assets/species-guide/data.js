@@ -33,7 +33,7 @@ const SPECIES = [
     taxonomy: { rank: "Class", name: "Acantharia", authority: null, phylum: "Radiozoa", className: "Acantharia", environment: "Marine", vernacular: "acantharians" },
     wormsUrl: "https://www.marinespecies.org/aphia.php?p=taxdetails&id=586732",
     images: { good: "assets/species/acantharia/good.jpg", features: "assets/species/acantharia/features.jpg", similar: "assets/species/acantharia/similar.jpg" },
-    similar: { id: "phaeodarian_E", reason: "Both show a dark central body with several long, thin spicules/spines radiating outward. Phaeodarian E's spines are more numerous and evenly spaced but noticeably sparser and shorter than acantharia's long straight spicules." },
+    similar: { id: "diatom chain spines", reason: "Both show a dark central body with several long, thin spicules/spines radiating outward. Diatom chain spines has a longer body compared with the sphere body of the acantharia." },
   },
   {
     id: "phaeodarian_A", label: "Phaeodarian A", category: "Radiolarians & rhizarians", count: 36, hasProfile: true, isBiological: true,
