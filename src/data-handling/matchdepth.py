@@ -128,20 +128,26 @@ def find_matching_timestamps(df1, df2, defase= 0, threshold=8, raw = False):
     
     # Aplying the defase in the images (their clock runs ahead of the ctd in the rov)
     df2['adjusted_iso_datetime'] = df2['iso_datetime'].apply(lambda x: add_seconds(x, defase))
-    
-    # Expanding dimensions to calculate the diferente with matrices 
-    timestamps_img_exp = np.expand_dims(df2['adjusted_iso_datetime'].values, axis=1)  # (m,) -> (m, 1)
-    timestamps_rovctd_ts_exp = np.expand_dims(df1['timestamp'].values, axis=0)  # (n,) -> (1, n)
-    
-    # Absolute diference between the timestamps
-    diff_matrix = np.abs((timestamps_rovctd_ts_exp - timestamps_img_exp).astype('timedelta64[s]').astype(float))
 
-    # Get the index of the minimum value for every picture
-    min_indices = np.argmin(diff_matrix, axis=1)
-    
-    # Get the value
-    min_values = np.min(diff_matrix, axis=1)
-    
+    # Nearest-neighbor lookup via binary search instead of a dense (num_images x
+    # num_ctd_rows) matrix: that matrix (plus its intermediate copies) grows to tens
+    # of GB on large missions and gets the process OOM-killed.
+    df1 = df1.sort_values('timestamp').reset_index(drop=True)
+    sorted_ts = df1['timestamp'].values
+    img_ts = df2['adjusted_iso_datetime'].values
+
+    n = len(sorted_ts)
+    insert_idx = np.searchsorted(sorted_ts, img_ts)
+    left_idx = np.clip(insert_idx - 1, 0, n - 1)
+    right_idx = np.clip(insert_idx, 0, n - 1)
+
+    left_diff = np.abs((sorted_ts[left_idx] - img_ts).astype('timedelta64[s]').astype(float))
+    right_diff = np.abs((sorted_ts[right_idx] - img_ts).astype('timedelta64[s]').astype(float))
+
+    use_left = left_diff <= right_diff
+    min_indices = np.where(use_left, left_idx, right_idx)
+    min_values = np.where(use_left, left_diff, right_diff)
+
     # List of results
     results = []
 
