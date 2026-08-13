@@ -129,6 +129,14 @@ const SPECIES = [
     images: { good: "assets/species/ctenophore/good.jpg", features: "assets/species/ctenophore/features.jpg", similar: "assets/species/ctenophore/similar.jpg" },
     similar: { id: "salp", reason: "Both show a banded or ridged pattern on a translucent body. The ctenophore's comb rows are curved parallel ridges with no barrel-shaped outline, while the salp has evenly spaced ring-like muscle bands around a clear barrel/oval body." },
   },
+  {
+    id: "football", label: "Football", category: "Gelatinous zooplankton", count: 119, hasProfile: true, isBiological: false,
+    note: "Oval shape with concentric bright/dark banding, resembling an American football — tentatively Velella, not confirmed.",
+    description: "Originally treated as an out-of-focus optical artifact — a bubble or piece of debris passing through an intermediate focal distance, producing an oval shape with bright/dark banding. Grouped here with the gelatinous zooplankton instead, on a suspicion that it may actually be Velella velella (the \"by-the-wind sailor\"), a colonial hydrozoan with a gas-filled float, viewed in shadowgraph at an angle that gives the banded, football-like silhouette. That identification hasn't been confirmed, so this class is kept without an assigned taxonomy or WoRMS entry until someone gets a better look.",
+    images: { good: "assets/species/football/good.jpg", features: "assets/species/football/features.jpg", similar: "assets/species/football/similar.jpg" },
+    taxonomyNote: "Suspected to be Velella velella (by-the-wind sailor), but not confirmed — so it isn't matched to a WoRMS entry here.",
+    similar: { id: "bubble", reason: "Both are round-ish and were originally grouped as optical artifacts. The bubble is sharply in focus, perfectly circular, and uniformly black, while the football is out of focus, oval, and shows concentric bright/dark banding rather than a solid fill." },
+  },
 
   // ---- Crustaceans & other animals ----
   {
@@ -218,7 +226,7 @@ const SPECIES = [
     similar: { id: "phaeocystis", reason: "Both show a fuzzy, irregular mass trailing one or two long straight strands. aggregate_string is detrital marine snow of variable texture, while phaeocystis is a distinct living colonial clump with a consistent fuzzy texture." },
   },
   {
-    id: "bloom", label: "Bloom", category: "Marine snow, aggregates & fecal material", count: 20326, hasProfile: true, isBiological: false,
+    id: "bloom", label: "Bloom", category: "Marine snow, aggregates & fecal material", count: 20326, hasProfile: true, isBiological: false, featuresAnnotated: false,
     note: "Frame scattered with many small round particles/cells rather than one discrete object — most common class overall.",
     description: "`bloom` is a frame-level label, not a single-object one: it's used when the frame is scattered with many small round particles or cells — typically a dense phytoplankton bloom — rather than showing one discrete organism or particle to crop. It's the most common class overall in the Baseline set.",
     images: { good: "assets/species/bloom/good.jpg", features: "assets/species/bloom/features.jpg", similar: "assets/species/bloom/similar.jpg" },
@@ -241,7 +249,7 @@ const SPECIES = [
 
   // ---- Out-of-focus / blurred particles ----
   {
-    id: "particle_blur", label: "Particle (blur)", category: "Out-of-focus / blurred particles", count: 1984, hasProfile: true, isBiological: false,
+    id: "particle_blur", label: "Particle (blur)", category: "Out-of-focus / blurred particles", count: 1984, hasProfile: true, isBiological: false, featuresAnnotated: false,
     note: "Rounded, soft-edged, out-of-focus dark blob — no sharp edges anywhere in the crop.",
     description: "A catch-all for any discrete dark particle that is far enough out of the ISIIS camera's focal plane to lose all sharp edges. The object itself could be an aggregate, a pellet, or something else entirely — what defines this class is the blur, not the particle's identity.",
     images: { good: "assets/species/particle_blur/good.jpg", features: "assets/species/particle_blur/features.jpg", similar: "assets/species/particle_blur/similar.jpg" },
@@ -250,14 +258,14 @@ const SPECIES = [
 
   // ---- Non-biological / imaging artifacts ----
   {
-    id: "artifact", label: "Artifact", category: "Non-biological / imaging artifacts", count: 9194, hasProfile: true, isBiological: false,
+    id: "artifact", label: "Artifact", category: "Non-biological / imaging artifacts", count: 9194, hasProfile: true, isBiological: false, featuresAnnotated: false,
     note: "Faint, indistinct, low-contrast smudge with no clear boundary — not a real particle.",
     description: "Optical or processing artifacts: faint, indistinct, low-contrast smudges with no clear boundary that don't correspond to any real particle in the water. Labeled so they can be filtered out of ecological counts downstream.",
     images: { good: "assets/species/artifact/good.jpg", features: "assets/species/artifact/features.jpg", similar: "assets/species/artifact/similar.jpg" },
     similar: { id: "noise", reason: "Both are faint, low-contrast marks that don't correspond to a real particle. artifact is a larger, more indistinct smudge with no clear boundary, while noise is smaller, sharper, soft circular specks." },
   },
   {
-    id: "noise", label: "Noise", category: "Non-biological / imaging artifacts", count: 2233, hasProfile: true, isBiological: false,
+    id: "noise", label: "Noise", category: "Non-biological / imaging artifacts", count: 2233, hasProfile: true, isBiological: false, featuresAnnotated: false,
     note: "Small faint speck(s)/soft circular blobs, sensor or optical noise rather than a discrete object.",
     description: "Sensor or optical noise: small, faint specks or soft circular blobs produced by the imaging system itself rather than by anything in the water.",
     images: { good: "assets/species/noise/good.jpg", features: "assets/species/noise/features.jpg", similar: "assets/species/noise/similar.jpg" },
@@ -269,13 +277,6 @@ const SPECIES = [
     description: "Air bubbles introduced by the instrument or its housing as it moves through the water. They're one of the easier artifacts to identify reliably: a perfectly circular, uniformly solid black disc with a sharp, clean edge — real organisms almost never produce that exact combination.",
     images: { good: "assets/species/bubble/good.jpg", features: "assets/species/bubble/features.jpg", similar: "assets/species/bubble/similar.jpg" },
     similar: { id: "centric_diatom", reason: "Both are small, solid, dark, roughly circular shapes. The bubble is a perfectly circular, featureless, uniformly black disc, while the diatom shows a visible cell-wall rim and slightly irregular internal texture." },
-  },
-  {
-    id: "football", label: "Football", category: "Non-biological / imaging artifacts", count: 119, hasProfile: true, isBiological: false,
-    note: "Oval, out-of-focus artifact resembling an American football, with bright/dark banding.",
-    description: "An out-of-focus optical artifact with a characteristic oval shape and bright/dark banding, resembling an American football — most likely a bubble or piece of debris on the optics passing through an intermediate focal distance, rather than anything biological.",
-    images: { good: "assets/species/football/good.jpg", features: "assets/species/football/features.jpg", similar: "assets/species/football/similar.jpg" },
-    similar: { id: "bubble", reason: "Both are thought to originate from air bubbles or debris on the optics. The bubble is sharply in focus, perfectly circular, and uniformly black, while the football is out of focus, oval, and shows bright/dark banding rather than a solid fill." },
   },
   {
     id: "density", label: "Density", category: "Non-biological / imaging artifacts", count: 1245, hasProfile: true, isBiological: false,
