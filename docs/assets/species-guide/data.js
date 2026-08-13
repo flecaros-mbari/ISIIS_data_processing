@@ -175,7 +175,7 @@ const SPECIES = [
     similar: { id: "molt", reason: "Both show jointed legs and antennae in a similar overall body plan. A shrimp is a solid, opaque living animal, while a molt is an empty, translucent shed exoskeleton with no solid body mass." },
   },
   {
-    id: "squid", label: "Squid", category: "Crustaceans & other animals", count: 1, hasProfile: true, isBiological: true,
+    id: "squid", label: "Squid", category: "Crustaceans & other animals", count: 1, hasProfile: true, isBiological: true, singleImage: true,
     note: "Large solid dark silhouette with a distinct mantle and fin shape.",
     description: "Squid are fast-swimming cephalopod predators. Only a single example is labeled in the current Baseline set, seen as a large, solid, dark silhouette with a distinct tapered mantle and pointed arms/fins trailing behind — much larger than almost anything else in this taxonomy. (WoRMS flags the order Teuthida itself as taxonomically unresolved pending further study, but it remains the standard name in general use for squids.)",
     taxonomy: { rank: "Order", name: "Teuthida", authority: "Naef, 1916", phylum: "Mollusca", className: "Cephalopoda (order Teuthida)", environment: "Marine", vernacular: "squids" },

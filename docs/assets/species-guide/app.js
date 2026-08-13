@@ -51,17 +51,14 @@
   function renderWelcome() {
     const detail = document.getElementById("detail");
     const totalCount = SPECIES.reduce((sum, s) => sum + s.count, 0);
-    const profileCount = SPECIES.filter((s) => s.hasProfile).length;
 
     const categoryRows = CATEGORIES.map((cat) => {
       const items = SPECIES.filter((s) => s.category === cat);
       const catTotal = items.reduce((sum, s) => sum + s.count, 0);
-      const catProfiles = items.filter((s) => s.hasProfile).length;
       return `<tr>
         <td>${cat}</td>
         <td>${items.length}</td>
         <td>${catTotal.toLocaleString()}</td>
-        <td>${catProfiles ? `${catProfiles} / ${items.length}` : "—"}</td>
       </tr>`;
     }).join("");
 
@@ -91,10 +88,9 @@
       </dl>
 
       <p class="description" style="margin-bottom:0.6rem;"><strong>Class breakdown by category</strong> — counts are labeled examples in the
-      current Baseline set; the last column shows how many classes in that category have a full profile
-      (3-image gallery + WoRMS taxonomy) built out so far.</p>
+      current Baseline set.</p>
       <table class="overview-table">
-        <thead><tr><th>Category</th><th>Classes</th><th>Examples</th><th>Full profiles</th></tr></thead>
+        <thead><tr><th>Category</th><th>Classes</th><th>Examples</th></tr></thead>
         <tbody>${categoryRows}</tbody>
       </table>
 
@@ -134,6 +130,28 @@
     const t = s.taxonomy;
     const similar = s.similar ? byId[s.similar.id] : null;
 
+    const galleryHtml = s.singleImage
+      ? `<div class="gallery" style="grid-template-columns: 1fr;max-width:260px;">
+          <figure class="shot">
+            <img src="${s.images.good}" alt="${s.label} reference example">
+            <figcaption>Reference example<span class="sub">a clean, representative crop</span></figcaption>
+          </figure>
+        </div>`
+      : `<div class="gallery">
+        <figure class="shot">
+          <img src="${s.images.good}" alt="${s.label} reference example">
+          <figcaption>Reference example<span class="sub">a clean, representative crop</span></figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="${s.images.features}" alt="${s.label} labeled features">
+          <figcaption>Key features<span class="sub">distinguishing structures called out</span></figcaption>
+        </figure>
+        <figure class="shot similar">
+          <img src="${s.images.similar}" alt="${similar ? similar.label : "similar species"} example">
+          <figcaption>Commonly confused with<span class="sub"><a href="#" data-goto="${s.similar.id}">${similar ? similar.label : s.similar.id}</a></span></figcaption>
+        </figure>
+      </div>`;
+
     const taxoBlock = s.isBiological
       ? `<dl class="taxo-box">
           ${taxoRow("Rank", t.rank)}
@@ -159,20 +177,7 @@
 
       ${taxoBlock}
 
-      <div class="gallery">
-        <figure class="shot">
-          <img src="${s.images.good}" alt="${s.label} reference example">
-          <figcaption>Reference example<span class="sub">a clean, representative crop</span></figcaption>
-        </figure>
-        <figure class="shot">
-          <img src="${s.images.features}" alt="${s.label} labeled features">
-          <figcaption>Key features<span class="sub">distinguishing structures called out</span></figcaption>
-        </figure>
-        <figure class="shot similar">
-          <img src="${s.images.similar}" alt="${similar ? similar.label : "similar species"} example">
-          <figcaption>Commonly confused with<span class="sub"><a href="#" data-goto="${s.similar.id}">${similar ? similar.label : s.similar.id}</a></span></figcaption>
-        </figure>
-      </div>
+      ${galleryHtml}
 
       <p class="description">${s.description}</p>
 
