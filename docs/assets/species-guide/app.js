@@ -143,8 +143,8 @@
           <figcaption>Reference example<span class="sub">a clean, representative crop</span></figcaption>
         </figure>
         <figure class="shot">
-          <img src="${s.images.features}" alt="${s.label} labeled features">
-          <figcaption>Key features<span class="sub">distinguishing structures called out</span></figcaption>
+          <img src="${s.images.features}" alt="${s.label} ${s.featuresAnnotated === false ? "second example" : "labeled features"}">
+          <figcaption>${s.featuresAnnotated === false ? `Another example<span class="sub">a second representative crop</span>` : `Key features<span class="sub">distinguishing structures called out</span>`}</figcaption>
         </figure>
         <figure class="shot similar">
           <img src="${s.images.similar}" alt="${similar ? similar.label : "similar species"} example">
@@ -161,7 +161,7 @@
           ${t.vernacular ? taxoRow("Also known as", t.vernacular) : ""}
           ${taxoRow("WoRMS AphiaID", `<a href="${s.wormsUrl}" target="_blank" rel="noopener">${s.wormsUrl.split("id=")[1]} ↗</a>`)}
         </dl>`
-      : `<div class="pending-banner">Not a taxonomic group — this is a ${s.category.toLowerCase().includes("non-biological") ? "non-biological imaging category" : "morphological/detrital category"}, so there's no WoRMS entry for it.</div>`;
+      : `<div class="pending-banner">${s.taxonomyNote || `Not a taxonomic group — this is a ${s.category.toLowerCase().includes("non-biological") ? "non-biological imaging category" : "morphological/detrital category"}, so there's no WoRMS entry for it.`}</div>`;
 
     const sourceLine = s.isBiological
       ? `<p class="source-line">Taxonomy and AphiaID via <a href="${s.wormsUrl}" target="_blank" rel="noopener">WoRMS</a>. Descriptive text written from general planktonic biology (WoRMS records are taxonomic, not prose descriptions).</p>`
