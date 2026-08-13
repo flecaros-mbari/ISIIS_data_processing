@@ -33,7 +33,7 @@ const SPECIES = [
     taxonomy: { rank: "Class", name: "Acantharia", authority: null, phylum: "Radiozoa", className: "Acantharia", environment: "Marine", vernacular: "acantharians" },
     wormsUrl: "https://www.marinespecies.org/aphia.php?p=taxdetails&id=586732",
     images: { good: "assets/species/acantharia/good.jpg", features: "assets/species/acantharia/features.jpg", similar: "assets/species/acantharia/similar.jpg" },
-    similar: { id: "diatom chain spines", reason: "Both show a dark central body with several long, thin spicules/spines radiating outward. Diatom chain spines has a longer body compared with the sphere body of the acantharia." },
+    similar: { id: "diatom_chain_spines", reason: "Both show a dark central body with several long, thin spicules/spines radiating outward. Diatom chain spines has a longer, segmented chain body, compared with the small, spherical central capsule of the acantharia." },
   },
   {
     id: "phaeodaria", label: "Phaeodaria", category: "Radiolarians & rhizarians", count: 77, hasProfile: true, isBiological: true,
@@ -42,7 +42,7 @@ const SPECIES = [
     taxonomy: { rank: "Subclass", name: "Phaeodaria", authority: "Haeckel, 1879", phylum: "Cercozoa", className: "Thecofilosea (subclass Phaeodaria)", environment: "Marine", vernacular: "phaeodarians" },
     wormsUrl: "https://www.marinespecies.org/aphia.php?p=taxdetails&id=345868",
     images: { good: "assets/species/phaeodaria/good.jpg", features: "assets/species/phaeodaria/features.jpg", similar: "assets/species/phaeodaria/similar.jpg" },
-    similar: { id: "acantharia", reason: "Both show a dark central body that can have spines radiating outward. Check for phaeodaria's silica skeleton — which persists after death and can be spined, latticed, or striated depending on genus — versus acantharia's few, long, straight strontium-sulfate spicules, which dissolve quickly after death." },
+    similar: { id: "diatom_chain_spines", reason: "Both show a dark central mass with fine spines radiating outward. Check for phaeodaria's single, roughly round body versus diatom chain spines' elongated, segmented chain, which the spines run along rather than radiate from a single point." },
   },
 
   // ---- Diatoms ----
@@ -91,7 +91,7 @@ const SPECIES = [
     taxonomy: { rank: "Class", name: "Appendicularia", authority: null, phylum: "Chordata", className: "Appendicularia", environment: "Marine, brackish", vernacular: "larvaceans" },
     wormsUrl: "https://www.marinespecies.org/aphia.php?p=taxdetails&id=146421",
     images: { good: "assets/species/larvacean/good.jpg", features: "assets/species/larvacean/features.jpg", similar: "assets/species/larvacean/similar.jpg" },
-    similar: { id: "copepod", reason: "Both are small, dark, comma-shaped bodies of similar size. Look for the larvacean's smooth S-curved tail and lack of antennae, versus the copepod's pair of long antennae and fine trailing tail setae." },
+    similar: { id: "chaetognath", reason: "Both are elongated, translucent-to-dark bodies of comparable length. Look for the larvacean's smooth S-curved or comma-shaped trunk and beating tail, versus the chaetognath's straight, torpedo-shaped body tapering to a point with a distinct tail fin." },
   },
   {
     id: "salp", label: "Salp", category: "Gelatinous zooplankton", count: 3, hasProfile: true, isBiological: true,
@@ -155,7 +155,7 @@ const SPECIES = [
     taxonomy: { rank: "Phylum", name: "Chaetognatha", authority: null, aphiaId: 2081, phylum: "Chaetognatha", className: "Sagittoidea", environment: "Marine only", vernacular: "arrow worms" },
     wormsUrl: "https://www.marinespecies.org/aphia.php?p=taxdetails&id=2081",
     images: { good: "assets/species/chaetognath/good.jpg", features: "assets/species/chaetognath/features.jpg", similar: "assets/species/chaetognath/similar.jpg" },
-    similar: { id: "long_fecal_pellet", reason: "Both are straight, elongated, dark shapes of similar size. Look for the chaetognath's tapered head, tail fin, and internal muscle striations, versus the fecal pellet's uniform width and otherwise featureless interior." },
+    similar: { id: "larvacean", reason: "Both are elongated, translucent-to-dark bodies of comparable length. Look for the chaetognath's straight, torpedo-shaped body tapering to a point with a distinct tail fin, versus the larvacean's smooth S-curved or comma-shaped trunk and beating tail." },
   },
   {
     id: "worm", label: "Worm", category: "Crustaceans & other animals", count: 11, hasProfile: true, isBiological: true,
@@ -200,7 +200,7 @@ const SPECIES = [
     taxonomy: { rank: "Genus", name: "Phaeocystis", authority: "Lagerheim, 1893", phylum: "Haptophyta", className: "Coccolithophyceae (order Phaeocystales)", environment: "Marine", vernacular: null },
     wormsUrl: "https://www.marinespecies.org/aphia.php?p=taxdetails&id=115088",
     images: { good: "assets/species/phaeocystis/good.jpg", features: "assets/species/phaeocystis/features.jpg", similar: "assets/species/phaeocystis/similar.jpg" },
-    similar: { id: "aggregate_string", reason: "Both show a fuzzy, irregular mass trailing one or two long straight strands. Phaeocystis is a distinct living colonial clump with a consistent fuzzy texture, while aggregate_string is detrital marine snow of variable, often more compact, texture." },
+    similar: { id: "aggregate_light", reason: "Both are loose, low-contrast, irregular dark clumps with diffuse edges. Phaeocystis is a distinct living colonial clump with a consistent fuzzy texture and usually one or two trailing mucilage strands, while aggregate_light is detrital marine snow with no consistent internal texture or attached strand." },
   },
 
   // ---- Marine snow, aggregates & fecal material ----
@@ -223,7 +223,7 @@ const SPECIES = [
     note: "Aggregate mass hanging off a single long, thin string/strand.",
     description: "Marine-snow aggregate material (see `aggregate_dense`) that has collected around, or is hanging from, a single long thin string or strand — often a discarded larvacean house strand or a fecal strand that debris has accumulated on.",
     images: { good: "assets/species/aggregate_string/good.jpg", features: "assets/species/aggregate_string/features.jpg", similar: "assets/species/aggregate_string/similar.jpg" },
-    similar: { id: "phaeocystis", reason: "Both show a fuzzy, irregular mass trailing one or two long straight strands. aggregate_string is detrital marine snow of variable texture, while phaeocystis is a distinct living colonial clump with a consistent fuzzy texture." },
+    similar: { id: "long_fecal_pellet", reason: "Both can show a compact, elongated dark mass. aggregate_string's mass is loose detrital marine snow collected around a trailing string, with a ragged, irregular outline, while long_fecal_pellet is a solid, uniform-width cylinder with a smooth, defined edge and no attached strand." },
   },
   {
     id: "bloom", label: "Bloom", category: "Marine snow, aggregates & fecal material", count: 20326, hasProfile: true, isBiological: false, featuresAnnotated: false,
@@ -244,7 +244,7 @@ const SPECIES = [
     note: "Same as long_fecal_pellet but short/oval rather than elongated.",
     description: "The same solid, dense fecal material as `long_fecal_pellet` (see there for background), but short and oval rather than elongated — a solid, uniformly dark pellet with a sharp, defined edge.",
     images: { good: "assets/species/short_fecal_pellet/good.jpg", features: "assets/species/short_fecal_pellet/features.jpg", similar: "assets/species/short_fecal_pellet/similar.jpg" },
-    similar: { id: "long_fecal_pellet", reason: "Both are solid, uniformly dark fecal pellets with a defined edge and featureless interior. short_fecal_pellet is a short oval shape, while long_fecal_pellet is a longer, more slender cylinder." },
+    similar: { id: "bubble", reason: "Both are small, solid, uniformly dark shapes with a sharp, defined edge. short_fecal_pellet is a short oval with a slightly irregular outline, while the bubble is a perfectly circular, featureless black disc." },
   },
 
   // ---- Out-of-focus / blurred particles ----
@@ -290,6 +290,6 @@ const SPECIES = [
     note: "Thin straight or gently curved line(s) crossing the frame — a fiber or optical streak, not attached to any organism/aggregate.",
     description: "A thin fiber or optical streak crossing the frame — debris, a stray strand, or a scratch/artifact on the optics — straight or gently curved, and not attached to any organism or aggregate (contrast with `aggregate_string`, where a similar strand has marine snow collected on it).",
     images: { good: "assets/species/string/good.jpg", features: "assets/species/string/features.jpg", similar: "assets/species/string/similar.jpg" },
-    similar: { id: "aggregate_string", reason: "Both feature a thin string-like strand. The `string` class is a bare fiber/streak with nothing attached, while `aggregate_string` is the same kind of strand with a marine-snow mass collected on it." },
+    similar: { id: "diatom_chain_straight", reason: "Both can appear as a thin, straight dark line crossing the frame. The `string` class is a bare fiber/streak with no internal structure, while diatom chain (straight) is a row of individual cells joined end-to-end, with a beaded, segmented outline visible on close inspection." },
   },
 ];
